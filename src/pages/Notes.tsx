@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Plus, Trash2, FileText, Share2, Paperclip, X, Upload } from 'lucide-react';
+import { Plus, Trash2, FileText, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,8 +10,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNotes, Note } from '@/hooks/useNotes';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,33 +21,22 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-interface Attachment {
-  name: string;
-  path: string;
-  size: number;
-  type: string;
-}
-
 export default function Notes() {
   const { user, loading: authLoading } = useAuth();
-  const { notes, loading: notesLoading, createNote, updateNote, deleteNote, refetch } = useNotes();
+  const { notes, loading: notesLoading, createNote, updateNote, deleteNote } = useNotes();
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [content, setContent] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [noteToShare, setNoteToShare] = useState<Note | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-select first note or newly created note
   useEffect(() => {
     if (notes.length > 0 && !selectedNote) {
       setSelectedNote(notes[0]);
       setContent(notes[0].content);
-      setAttachments((notes[0] as any).attachments || []);
     }
   }, [notes, selectedNote]);
 
@@ -72,14 +59,13 @@ export default function Notes() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [content, selectedNote]);
+  }, [content, selectedNote, updateNote]);
 
   const handleCreateNote = async () => {
     const { data } = await createNote();
     if (data) {
       setSelectedNote(data);
       setContent('');
-      setAttachments([]);
     }
   };
 
@@ -90,7 +76,6 @@ export default function Notes() {
     }
     setSelectedNote(note);
     setContent(note.content);
-    setAttachments((note as any).attachments || []);
   };
 
   const handleDeleteClick = (e: React.MouseEvent, noteId: string) => {
@@ -115,7 +100,6 @@ export default function Notes() {
       if (selectedNote?.id === noteToDelete) {
         setSelectedNote(null);
         setContent('');
-        setAttachments([]);
       }
       setNoteToDelete(null);
       setDeleteDialogOpen(false);
@@ -130,102 +114,6 @@ export default function Notes() {
         updateNote(selectedNote.id, content);
       }
     }
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0 || !selectedNote || !user) return;
-
-    setUploading(true);
-    const newAttachments: Attachment[] = [...attachments];
-
-    try {
-      for (const file of Array.from(files)) {
-        const filePath = `${user.id}/${selectedNote.id}/${Date.now()}_${file.name}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('note-attachments')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        newAttachments.push({
-          name: file.name,
-          path: filePath,
-          size: file.size,
-          type: file.type,
-        });
-      }
-
-      // Update note with new attachments
-      const { error } = await supabase
-        .from('notes')
-        .update({ attachments: newAttachments as unknown as any })
-        .eq('id', selectedNote.id);
-
-      if (error) throw error;
-
-      setAttachments(newAttachments);
-      toast({ title: 'File uploaded successfully!' });
-      refetch();
-    } catch (error: any) {
-      toast({
-        title: 'Upload failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const handleRemoveAttachment = async (index: number) => {
-    if (!selectedNote) return;
-
-    const attachmentToRemove = attachments[index];
-    const newAttachments = attachments.filter((_, i) => i !== index);
-
-    try {
-      // Delete from storage
-      await supabase.storage
-        .from('note-attachments')
-        .remove([attachmentToRemove.path]);
-
-      // Update note
-      await supabase
-        .from('notes')
-        .update({ attachments: newAttachments as unknown as any })
-        .eq('id', selectedNote.id);
-
-      setAttachments(newAttachments);
-      toast({ title: 'Attachment removed' });
-      refetch();
-    } catch (error: any) {
-      toast({
-        title: 'Failed to remove attachment',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const getAttachmentUrl = async (path: string) => {
-    const { data } = await supabase.storage
-      .from('note-attachments')
-      .createSignedUrl(path, 3600);
-    
-    if (data?.signedUrl) {
-      window.open(data.signedUrl, '_blank');
-    }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   if (authLoading) {
@@ -321,74 +209,13 @@ export default function Notes() {
             {/* Editor */}
             <div className="flex-1 flex flex-col min-h-[400px] md:min-h-0">
               {selectedNote ? (
-                <>
-                  <Textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Type your note here..."
-                    className="flex-1 min-h-[300px] md:min-h-[calc(100vh-280px)] resize-none border-0 focus-visible:ring-0 text-base leading-relaxed"
-                  />
-                  
-                  {/* Attachments Section */}
-                  <div className="border-t pt-3 mt-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium flex items-center gap-1.5">
-                        <Paperclip className="h-4 w-4" />
-                        Attachments
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploading}
-                        className="gap-1.5"
-                      >
-                        <Upload className="h-3.5 w-3.5" />
-                        {uploading ? 'Uploading...' : 'Add file'}
-                      </Button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={handleFileUpload}
-                      />
-                    </div>
-                    
-                    {attachments.length > 0 ? (
-                      <div className="space-y-1.5">
-                        {attachments.map((attachment, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-2 bg-muted rounded-md text-sm group"
-                          >
-                            <button
-                              onClick={() => getAttachmentUrl(attachment.path)}
-                              className="flex items-center gap-2 hover:text-primary flex-1 min-w-0 text-left"
-                            >
-                              <Paperclip className="h-3.5 w-3.5 flex-shrink-0" />
-                              <span className="truncate">{attachment.name}</span>
-                              <span className="text-xs text-muted-foreground flex-shrink-0">
-                                ({formatFileSize(attachment.size)})
-                              </span>
-                            </button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                              onClick={() => handleRemoveAttachment(index)}
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">No attachments yet</p>
-                    )}
-                  </div>
-                </>
+                <Textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Type your note here..."
+                  className="flex-1 min-h-[300px] md:min-h-[calc(100vh-200px)] resize-none border-0 focus-visible:ring-0 text-base leading-relaxed"
+                />
               ) : (
                 <div className="h-full flex items-center justify-center text-muted-foreground">
                   Select a note to edit
