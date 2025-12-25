@@ -1,6 +1,21 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { Plus, LogOut, ListTodo, X, BarChart3, FileText } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TaskCard } from '@/components/TaskCard';
@@ -24,7 +39,7 @@ import {
 
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { tasks, loading: tasksLoading, addTask, updateTask, deleteTask } = useTasks();
+  const { tasks, loading: tasksLoading, addTask, updateTask, deleteTask, reorderTasks } = useTasks();
   
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -36,6 +51,11 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('newest');
   const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   // Get all unique tags
   const allTags = useMemo(() => {
@@ -69,10 +89,8 @@ export default function Dashboard() {
       if (a.is_completed !== b.is_completed) {
         return a.is_completed ? 1 : -1;
       }
-      // Then sort by date
-      const dateA = new Date(a.created_at).getTime();
-      const dateB = new Date(b.created_at).getTime();
-      return sortOption === 'newest' ? dateB - dateA : dateA - dateB;
+      // Sort by position for drag-and-drop ordering
+      return (a.position || 0) - (b.position || 0);
     });
     
     return result;
@@ -99,6 +117,20 @@ export default function Dashboard() {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = filteredTasks.findIndex(t => t.id === active.id);
+      const newIndex = filteredTasks.findIndex(t => t.id === over.id);
+      const reordered = arrayMove(filteredTasks, oldIndex, newIndex).map((task, index) => ({
+        ...task,
+        position: index,
+      }));
+      reorderTasks(reordered);
+    }
+  };
 
   if (authLoading) {
     return (
@@ -235,7 +267,7 @@ export default function Dashboard() {
 
         {/* Keyboard hint */}
         <p className="text-xs text-muted-foreground mb-4">
-          Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">⌘N</kbd> to add a task
+          Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">⌘N</kbd> to add a task • Drag to reorder
         </p>
 
         {/* Task List */}
@@ -265,19 +297,27 @@ export default function Dashboard() {
             )}
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onEdit={handleEditClick}
-                onDelete={handleDeleteClick}
-                onShare={handleShareClick}
-                onToggleComplete={handleToggleComplete}
-                onTagClick={handleTagClick}
-              />
-            ))}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={filteredTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-3">
+                {filteredTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onEdit={handleEditClick}
+                    onDelete={handleDeleteClick}
+                    onShare={handleShareClick}
+                    onToggleComplete={handleToggleComplete}
+                    onTagClick={handleTagClick}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
       </main>
 

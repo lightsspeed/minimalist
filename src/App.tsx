@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import SharedNote from "./pages/SharedNote";
+import SharedPersonalNote from "./pages/SharedPersonalNote";
 import Analytics from "./pages/Analytics";
 import Notes from "./pages/Notes";
 import NotFound from "./pages/NotFound";
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/" element={<Dashboard />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/shared/:token" element={<SharedNote />} />
+          <Route path="/shared-note/:token" element={<SharedPersonalNote />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/notes" element={<Notes />} />
           <Route path="*" element={<NotFound />} />

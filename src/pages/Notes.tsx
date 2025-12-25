@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navigate, Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, FileText, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { NoteShareModal } from '@/components/NoteShareModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotes, Note } from '@/hooks/useNotes';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,7 @@ export default function Notes() {
   const [content, setContent] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Auto-select first note or newly created note
@@ -93,6 +95,16 @@ export default function Notes() {
     }
   };
 
+  const handleShareClick = () => {
+    if (selectedNote) {
+      // Save before sharing
+      if (content !== selectedNote.content) {
+        updateNote(selectedNote.id, content);
+      }
+      setShareModalOpen(true);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Cmd/Ctrl + S to save
     if ((e.metaKey || e.ctrlKey) && e.key === 's') {
@@ -129,6 +141,12 @@ export default function Notes() {
             <h1 className="font-semibold text-lg">Notes</h1>
           </div>
           <div className="flex items-center gap-2">
+            {selectedNote && (
+              <Button size="sm" variant="outline" onClick={handleShareClick} className="gap-1.5">
+                <Share2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Share</span>
+              </Button>
+            )}
             <Button size="sm" onClick={handleCreateNote} className="gap-1.5">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">New Note</span>
@@ -203,7 +221,7 @@ export default function Notes() {
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Start writing..."
+                  placeholder="Type your note here..."
                   className="h-full min-h-[400px] md:min-h-[calc(100vh-140px)] resize-none border-0 focus-visible:ring-0 text-base leading-relaxed"
                 />
               ) : (
@@ -215,6 +233,12 @@ export default function Notes() {
           </>
         )}
       </main>
+
+      <NoteShareModal
+        open={shareModalOpen}
+        onOpenChange={setShareModalOpen}
+        note={selectedNote}
+      />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
