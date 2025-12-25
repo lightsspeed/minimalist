@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ListTodo, FileText, BarChart3, LogOut, HelpCircle } from 'lucide-react';
+import { ListTodo, FileText, BarChart3, LogOut, HelpCircle, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
@@ -47,6 +47,15 @@ export function NavBar() {
                 title="Notes"
               >
                 <FileText className="h-5 w-5" />
+              </Button>
+            </Link>
+            <Link to="/archive">
+              <Button 
+                variant={location.pathname === '/archive' ? 'secondary' : 'ghost'} 
+                size="icon" 
+                title="Archive"
+              >
+                <Archive className="h-5 w-5" />
               </Button>
             </Link>
             <Link to="/analytics">

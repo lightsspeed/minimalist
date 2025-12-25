@@ -9,6 +9,7 @@ import SharedNote from "./pages/SharedNote";
 import SharedPersonalNote from "./pages/SharedPersonalNote";
 import Analytics from "./pages/Analytics";
 import Notes from "./pages/Notes";
+import Archive from "./pages/Archive";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/shared-note/:token" element={<SharedPersonalNote />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/notes" element={<Notes />} />
+          <Route path="/archive" element={<Archive />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

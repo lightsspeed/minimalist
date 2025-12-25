@@ -11,6 +11,7 @@ export interface Task {
   tags: string[];
   is_completed: boolean;
   is_pinned: boolean;
+  is_template: boolean;
   due_date: string | null;
   position: number;
   created_at: string;
@@ -93,7 +94,36 @@ export function useTasks() {
     return { error: null };
   };
 
-  const updateTask = async (id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'tags' | 'is_completed' | 'position' | 'is_pinned' | 'due_date'>>) => {
+  const addTaskFromTemplate = async (template: Task) => {
+    if (!user) return { error: new Error('Not authenticated') };
+
+    const maxPosition = tasks.length > 0 ? Math.max(...tasks.map(t => t.position || 0)) + 1 : 0;
+
+    const { error } = await supabase.from('tasks').insert({
+      user_id: user.id,
+      title: template.title,
+      description: template.description,
+      tags: template.tags,
+      position: maxPosition,
+      is_template: false,
+      is_completed: false,
+    });
+
+    if (error) {
+      toast({
+        title: 'Error creating task from template',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return { error };
+    }
+
+    toast({ title: 'Task created from template' });
+    await fetchTasks();
+    return { error: null };
+  };
+
+  const updateTask = async (id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'tags' | 'is_completed' | 'position' | 'is_pinned' | 'is_template' | 'due_date'>>) => {
     const { error } = await supabase
       .from('tasks')
       .update(updates)
@@ -132,6 +162,29 @@ export function useTasks() {
     }
 
     toast({ title: task.is_pinned ? 'Task unpinned' : 'Task pinned' });
+    await fetchTasks();
+    return { error: null };
+  };
+
+  const toggleTemplate = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return { error: new Error('Task not found') };
+
+    const { error } = await supabase
+      .from('tasks')
+      .update({ is_template: !task.is_template })
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: 'Error updating task',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return { error };
+    }
+
+    toast({ title: task.is_template ? 'Template removed' : 'Saved as template' });
     await fetchTasks();
     return { error: null };
   };
@@ -219,10 +272,12 @@ export function useTasks() {
     tasks,
     loading,
     addTask,
+    addTaskFromTemplate,
     updateTask,
     deleteTask,
     reorderTasks,
     togglePin,
+    toggleTemplate,
     convertToNote,
     refetch: fetchTasks,
   };

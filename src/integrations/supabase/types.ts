@@ -224,6 +224,7 @@ export type Database = {
           id: string
           is_completed: boolean
           is_pinned: boolean
+          is_template: boolean
           position: number | null
           tags: string[] | null
           title: string
@@ -237,6 +238,7 @@ export type Database = {
           id?: string
           is_completed?: boolean
           is_pinned?: boolean
+          is_template?: boolean
           position?: number | null
           tags?: string[] | null
           title: string
@@ -250,6 +252,7 @@ export type Database = {
           id?: string
           is_completed?: boolean
           is_pinned?: boolean
+          is_template?: boolean
           position?: number | null
           tags?: string[] | null
           title?: string
