@@ -210,12 +210,25 @@ export default function Dashboard() {
     setActiveTag(activeTag === tag ? null : tag);
   };
 
+  // Get display name from email
+  const displayName = user?.email?.split('@')[0] || 'there';
+
   return (
     <div className="min-h-screen bg-background transition-theme">
       <NavBar />
 
       {/* Main Content */}
       <main className="container max-w-3xl mx-auto px-4 py-6">
+        {/* Welcome message */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-foreground">
+            Welcome, <span className="text-primary">{displayName}</span>
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {filteredTasks.filter(t => !t.is_completed).length} pending tasks
+          </p>
+        </div>
+
         {/* Controls */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="flex-1">
