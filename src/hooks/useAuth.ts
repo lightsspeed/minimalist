@@ -28,15 +28,19 @@ export function useAuth() {
   }, []);
 
   const signUp = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
+    const { error, data } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl
+        emailRedirectTo: `${window.location.origin}/auth`
       }
     });
+    
+    // Sign out immediately after signup to force user to login
+    if (!error && data.user) {
+      await supabase.auth.signOut();
+    }
+    
     return { error };
   };
 

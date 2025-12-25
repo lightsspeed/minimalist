@@ -53,6 +53,23 @@ export default function Auth() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; confirmPassword?: string }>({});
 
+  // Force light mode on auth page
+  useEffect(() => {
+    const root = document.documentElement;
+    const wasInDarkMode = root.classList.contains('dark');
+    
+    // Remove dark mode for auth page
+    root.classList.remove('dark');
+    
+    // Restore previous theme when leaving auth page
+    return () => {
+      const storedTheme = localStorage.getItem('theme');
+      if (storedTheme === 'dark' || wasInDarkMode) {
+        root.classList.add('dark');
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (searchParams.get('reset') === 'true') {
       setMode('reset');
@@ -132,7 +149,9 @@ export default function Auth() {
           else if (error.message.includes('User already registered')) message = 'An account with this email already exists.';
           toast({ title: mode === 'login' ? 'Sign in failed' : 'Sign up failed', description: message, variant: 'destructive' });
         } else if (mode === 'signup') {
-          toast({ title: 'Account created!', description: 'You are now signed in.' });
+          toast({ title: 'Account created!', description: 'Please sign in with your credentials.' });
+          setMode('login');
+          setPassword('');
         }
       }
     } finally {
