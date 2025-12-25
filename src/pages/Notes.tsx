@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Navigate } from 'react-router-dom';
-import { Plus, Trash2, FileText, Share2, FolderOpen, Tag, X, Search, Pin } from 'lucide-react';
+import { Navigate, Link } from 'react-router-dom';
+import { Plus, Trash2, FileText, Share2, FolderOpen, Tag, X, Search, Pin, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -336,6 +336,17 @@ export default function Notes() {
                 <div className="flex flex-col h-full">
                   {/* Note metadata bar */}
                   <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b">
+                    {/* Source task link */}
+                    {selectedNote.source_task_id && (
+                      <Link
+                        to="/"
+                        className="flex items-center gap-1 text-xs text-primary hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        View source task
+                      </Link>
+                    )}
+                    
                     {/* Folder selector */}
                     <Select 
                       value={selectedNote.folder || 'none'} 
