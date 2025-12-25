@@ -10,6 +10,7 @@ export interface Note {
   folder: string | null;
   tags: string[];
   is_pinned: boolean;
+  source_task_id: string | null;
   created_at: string;
   updated_at: string;
 }

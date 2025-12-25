@@ -192,13 +192,29 @@ export function useTasks() {
   const sendToNotes = async (task: Task) => {
     if (!user) return { error: new Error('Not authenticated') };
 
-    // Create note content from task
-    const noteContent = `# ${task.title}\n\n${task.description || ''}`;
+    // Fetch subtasks for this task
+    const { data: subtasks } = await supabase
+      .from('subtasks')
+      .select('*')
+      .eq('task_id', task.id)
+      .order('position', { ascending: true });
+
+    // Build note content with subtasks
+    let noteContent = `# ${task.title}\n\n${task.description || ''}`;
+    
+    if (subtasks && subtasks.length > 0) {
+      noteContent += '\n\n## Subtasks\n';
+      subtasks.forEach(subtask => {
+        const checkbox = subtask.is_completed ? '[x]' : '[ ]';
+        noteContent += `- ${checkbox} ${subtask.title}\n`;
+      });
+    }
 
     const { error: noteError } = await supabase.from('notes').insert({
       user_id: user.id,
       content: noteContent,
       tags: task.tags,
+      source_task_id: task.id,
     });
 
     if (noteError) {
@@ -210,7 +226,7 @@ export function useTasks() {
       return { error: noteError };
     }
 
-    toast({ title: 'Sent to notes' });
+    toast({ title: 'Sent to notes with subtasks' });
     return { error: null };
   };
 

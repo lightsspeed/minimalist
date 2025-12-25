@@ -22,6 +22,7 @@ export type Database = {
           folder: string | null
           id: string
           is_pinned: boolean
+          source_task_id: string | null
           tags: string[] | null
           updated_at: string
           user_id: string
@@ -33,6 +34,7 @@ export type Database = {
           folder?: string | null
           id?: string
           is_pinned?: boolean
+          source_task_id?: string | null
           tags?: string[] | null
           updated_at?: string
           user_id: string
@@ -44,11 +46,20 @@ export type Database = {
           folder?: string | null
           id?: string
           is_pinned?: boolean
+          source_task_id?: string | null
           tags?: string[] | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notes_source_task_id_fkey"
+            columns: ["source_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
