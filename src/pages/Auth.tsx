@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Mail, Lock, User } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
+import logo from '@/assets/logo.png';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -71,7 +70,6 @@ export default function Auth() {
       if (error) {
         let message = error.message;
         
-        // Handle common error cases
         if (error.message.includes('Invalid login credentials')) {
           message = 'Invalid email or password';
         } else if (error.message.includes('User already registered')) {
@@ -96,102 +94,100 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background transition-theme">
-      <header className="flex justify-end p-4">
+      {/* Theme toggle */}
+      <header className="absolute top-4 right-4">
         <ThemeToggle />
       </header>
       
-      <main className="flex-1 flex items-center justify-center px-4 pb-16">
-        <Card className="w-full max-w-md animate-fade-in">
-          <CardHeader className="text-center space-y-2">
-            <div className="mx-auto w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-2">
-              <User className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <CardTitle className="text-2xl">
+      <main className="flex-1 flex items-center justify-center px-4">
+        <div className="w-full max-w-sm animate-fade-in">
+          {/* Logo & Title */}
+          <div className="text-center mb-10">
+            <img 
+              src={logo} 
+              alt="Minimalist" 
+              className="h-12 w-auto mx-auto mb-6 dark:brightness-0 dark:invert"
+            />
+            <h1 className="text-2xl font-semibold text-foreground mb-2">
               {isLogin ? 'Welcome back' : 'Create account'}
-            </CardTitle>
-            <CardDescription>
+            </h1>
+            <p className="text-sm text-muted-foreground">
               {isLogin 
-                ? 'Sign in to access your tasks and notes'
-                : 'Sign up to start organizing your tasks'
+                ? 'Sign in to continue'
+                : 'Get started for free'
               }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setErrors((prev) => ({ ...prev, email: undefined }));
-                    }}
-                    placeholder="you@example.com"
-                    className="pl-9"
-                    autoComplete="email"
-                  />
-                </div>
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
+            </p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setErrors((prev) => ({ ...prev, email: undefined }));
+                  }}
+                  placeholder="Email"
+                  className="pl-10 h-11 bg-muted/30 border-0 focus-visible:ring-1 focus-visible:ring-primary"
+                  autoComplete="email"
+                />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setErrors((prev) => ({ ...prev, password: undefined }));
-                    }}
-                    placeholder="••••••••"
-                    className="pl-9"
-                    autoComplete={isLogin ? 'current-password' : 'new-password'}
-                  />
-                </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isSubmitting}
-              >
-                {isSubmitting 
-                  ? 'Please wait...' 
-                  : isLogin ? 'Sign in' : 'Create account'
-                }
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setErrors({});
-                }}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {isLogin ? (
-                  <>Don't have an account? <span className="text-primary font-medium">Sign up</span></>
-                ) : (
-                  <>Already have an account? <span className="text-primary font-medium">Sign in</span></>
-                )}
-              </button>
+              {errors.email && (
+                <p className="text-xs text-destructive pl-1">{errors.email}</p>
+              )}
             </div>
-          </CardContent>
-        </Card>
+
+            <div className="space-y-1.5">
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setErrors((prev) => ({ ...prev, password: undefined }));
+                  }}
+                  placeholder="Password"
+                  className="pl-10 h-11 bg-muted/30 border-0 focus-visible:ring-1 focus-visible:ring-primary"
+                  autoComplete={isLogin ? 'current-password' : 'new-password'}
+                />
+              </div>
+              {errors.password && (
+                <p className="text-xs text-destructive pl-1">{errors.password}</p>
+              )}
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full h-11 mt-2"
+              disabled={isSubmitting}
+            >
+              {isSubmitting 
+                ? 'Please wait...' 
+                : isLogin ? 'Sign in' : 'Create account'
+              }
+            </Button>
+          </form>
+
+          {/* Toggle */}
+          <p className="text-center mt-8 text-sm text-muted-foreground">
+            {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setErrors({});
+              }}
+              className="text-primary font-medium hover:underline"
+            >
+              {isLogin ? 'Sign up' : 'Sign in'}
+            </button>
+          </p>
+        </div>
       </main>
     </div>
   );
