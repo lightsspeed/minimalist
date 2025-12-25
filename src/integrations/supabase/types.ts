@@ -170,6 +170,7 @@ export type Database = {
           created_at: string
           id: string
           is_completed: boolean
+          parent_id: string | null
           position: number | null
           task_id: string
           title: string
@@ -179,6 +180,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_completed?: boolean
+          parent_id?: string | null
           position?: number | null
           task_id: string
           title: string
@@ -188,12 +190,20 @@ export type Database = {
           created_at?: string
           id?: string
           is_completed?: boolean
+          parent_id?: string | null
           position?: number | null
           task_id?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "subtasks_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "subtasks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "subtasks_task_id_fkey"
             columns: ["task_id"]

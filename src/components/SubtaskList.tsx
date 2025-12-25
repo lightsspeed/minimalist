@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, X, Check, Circle, GripVertical } from 'lucide-react';
+import { Plus, X, Check, Circle, GripVertical, ChevronRight, ChevronDown } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -27,15 +27,26 @@ interface SubtaskListProps {
   onAllCompleted?: () => void;
 }
 
-function SortableSubtask({
+interface SubtaskItemProps {
+  subtask: Subtask;
+  depth: number;
+  onToggle: (id: string) => void;
+  onDelete: (id: string) => void;
+  onAddChild: (parentId: string, title: string) => void;
+}
+
+function SubtaskItem({
   subtask,
+  depth,
   onToggle,
   onDelete,
-}: {
-  subtask: Subtask;
-  onToggle: () => void;
-  onDelete: () => void;
-}) {
+  onAddChild,
+}: SubtaskItemProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isAddingChild, setIsAddingChild] = useState(false);
+  const [newChildTitle, setNewChildTitle] = useState('');
+  const hasChildren = subtask.children && subtask.children.length > 0;
+
   const {
     attributes,
     listeners,
@@ -50,52 +61,163 @@ function SortableSubtask({
     transition,
   };
 
+  const handleAddChild = () => {
+    if (!newChildTitle.trim()) return;
+    onAddChild(subtask.id, newChildTitle.trim());
+    setNewChildTitle('');
+    setIsAddingChild(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddChild();
+    } else if (e.key === 'Escape') {
+      setNewChildTitle('');
+      setIsAddingChild(false);
+    }
+  };
+
+  // Calculate colors based on depth for visual hierarchy
+  const depthColors = [
+    'border-l-primary/40',
+    'border-l-accent-foreground/30',
+    'border-l-muted-foreground/20',
+  ];
+  const borderColor = depthColors[Math.min(depth, depthColors.length - 1)];
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex items-center gap-2 group',
+        'animate-fade-in',
         isDragging && 'opacity-50'
       )}
     >
-      <button
-        className="flex-shrink-0 cursor-grab text-muted-foreground/50 hover:text-muted-foreground"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="h-3.5 w-3.5" />
-      </button>
-      <button
-        onClick={onToggle}
-        className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors"
-      >
-        {subtask.is_completed ? (
-          <Check className="h-3.5 w-3.5 text-success" />
-        ) : (
-          <Circle className="h-3.5 w-3.5" />
-        )}
-      </button>
-      <span
+      <div
         className={cn(
-          'flex-1 text-sm',
-          subtask.is_completed && 'line-through text-muted-foreground'
+          'flex items-center gap-1.5 group py-1.5 px-2 rounded-md transition-colors hover:bg-hover-blue',
+          depth > 0 && 'ml-4 border-l-2 pl-3',
+          depth > 0 && borderColor
         )}
       >
-        {subtask.title}
-      </span>
-      <button
-        onClick={onDelete}
-        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
+        {/* Expand/Collapse button */}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={cn(
+            'flex-shrink-0 w-4 h-4 flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors',
+            !hasChildren && 'invisible'
+          )}
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-3 w-3" />
+          ) : (
+            <ChevronRight className="h-3 w-3" />
+          )}
+        </button>
+
+        {/* Drag handle */}
+        <button
+          className="flex-shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Checkbox */}
+        <button
+          onClick={() => onToggle(subtask.id)}
+          className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors"
+        >
+          {subtask.is_completed ? (
+            <Check className="h-4 w-4 text-success" />
+          ) : (
+            <Circle className="h-4 w-4" />
+          )}
+        </button>
+
+        {/* Title */}
+        <span
+          className={cn(
+            'flex-1 text-sm',
+            subtask.is_completed && 'line-through text-muted-foreground'
+          )}
+        >
+          {subtask.title}
+        </span>
+
+        {/* Actions */}
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          {depth < 2 && (
+            <button
+              onClick={() => setIsAddingChild(true)}
+              className="p-1 text-muted-foreground hover:text-primary transition-colors rounded"
+              title="Add nested subtask"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          )}
+          <button
+            onClick={() => onDelete(subtask.id)}
+            className="p-1 text-muted-foreground hover:text-destructive transition-colors rounded"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* Add child input */}
+      {isAddingChild && (
+        <div className={cn('flex items-center gap-2 mt-1 mb-2', depth > 0 ? 'ml-8' : 'ml-4')}>
+          <div className="w-4" />
+          <Input
+            value={newChildTitle}
+            onChange={(e) => setNewChildTitle(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Nested subtask..."
+            className="h-7 text-xs flex-1"
+            autoFocus
+          />
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={handleAddChild}>
+            <Check className="h-3 w-3" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0"
+            onClick={() => {
+              setNewChildTitle('');
+              setIsAddingChild(false);
+            }}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+
+      {/* Children */}
+      {hasChildren && isExpanded && (
+        <div className="mt-0.5">
+          {subtask.children!.map((child) => (
+            <SubtaskItem
+              key={child.id}
+              subtask={child}
+              depth={depth + 1}
+              onToggle={onToggle}
+              onDelete={onDelete}
+              onAddChild={onAddChild}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 export function SubtaskList({ taskId, onAllCompleted }: SubtaskListProps) {
-  const { subtasks, loading, addSubtask, updateSubtask, deleteSubtask, reorderSubtasks } = useSubtasks(taskId, {
+  const { subtasks, subtaskTree, loading, addSubtask, updateSubtask, deleteSubtask, reorderSubtasks } = useSubtasks(taskId, {
     onAllCompleted,
   });
   const [newSubtask, setNewSubtask] = useState('');
@@ -114,6 +236,10 @@ export function SubtaskList({ taskId, onAllCompleted }: SubtaskListProps) {
     setIsAdding(false);
   };
 
+  const handleAddChild = async (parentId: string, title: string) => {
+    await addSubtask(title, parentId);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -124,8 +250,11 @@ export function SubtaskList({ taskId, onAllCompleted }: SubtaskListProps) {
     }
   };
 
-  const handleToggle = async (subtask: Subtask) => {
-    await updateSubtask(subtask.id, { is_completed: !subtask.is_completed });
+  const handleToggle = async (id: string) => {
+    const subtask = subtasks.find(s => s.id === id);
+    if (subtask) {
+      await updateSubtask(id, { is_completed: !subtask.is_completed });
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -149,8 +278,14 @@ export function SubtaskList({ taskId, onAllCompleted }: SubtaskListProps) {
   return (
     <div className="mt-3 pt-3 border-t border-border/50">
       {totalCount > 0 && (
-        <div className="text-xs text-muted-foreground mb-2">
-          Subtasks: {completedCount}/{totalCount}
+        <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
+          <span>Subtasks: {completedCount}/{totalCount}</span>
+          <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-success transition-all duration-300"
+              style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
+            />
+          </div>
         </div>
       )}
       
@@ -160,13 +295,15 @@ export function SubtaskList({ taskId, onAllCompleted }: SubtaskListProps) {
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={subtasks.map(s => s.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-1.5">
-            {subtasks.map((subtask) => (
-              <SortableSubtask
+          <div className="space-y-0.5">
+            {subtaskTree.map((subtask) => (
+              <SubtaskItem
                 key={subtask.id}
                 subtask={subtask}
-                onToggle={() => handleToggle(subtask)}
-                onDelete={() => deleteSubtask(subtask.id)}
+                depth={0}
+                onToggle={handleToggle}
+                onDelete={deleteSubtask}
+                onAddChild={handleAddChild}
               />
             ))}
           </div>
@@ -180,32 +317,32 @@ export function SubtaskList({ taskId, onAllCompleted }: SubtaskListProps) {
             onChange={(e) => setNewSubtask(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Subtask title"
-            className="h-7 text-sm"
+            className="h-8 text-sm"
             autoFocus
           />
-          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={handleAdd}>
-            <Check className="h-3.5 w-3.5" />
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={handleAdd}>
+            <Check className="h-4 w-4" />
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 px-2"
+            className="h-8 w-8 p-0"
             onClick={() => {
               setNewSubtask('');
               setIsAdding(false);
             }}
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-4 w-4" />
           </Button>
         </div>
       ) : (
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 text-xs mt-2 text-muted-foreground hover:text-foreground"
+          className="h-8 text-xs mt-2 text-muted-foreground hover:text-foreground gap-1"
           onClick={() => setIsAdding(true)}
         >
-          <Plus className="h-3 w-3 mr-1" />
+          <Plus className="h-3.5 w-3.5" />
           Add subtask
         </Button>
       )}
