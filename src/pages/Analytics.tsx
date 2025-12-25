@@ -455,9 +455,9 @@ export default function Analytics() {
                     {stats.topTags.map(([tag, count]) => (
                       <div key={tag} className="flex items-center gap-3">
                         <span className="text-sm font-medium min-w-[80px] truncate">{tag}</span>
-                        <div className="flex-1">
+                        <div className="flex-1 h-2 bg-muted rounded overflow-hidden">
                           <div
-                            className="h-2 bg-primary/30 rounded"
+                            className="h-full bg-primary rounded transition-all"
                             style={{
                               width: `${(count / stats.topTags[0][1]) * 100}%`,
                             }}
