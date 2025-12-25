@@ -369,14 +369,28 @@ export function NoteShareModal({ open, onOpenChange, note }: NoteShareModalProps
                   </p>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                onClick={exportQRCode}
-                className="gap-2 border-foreground text-foreground hover:bg-foreground hover:text-background"
-              >
-                <Download className="h-4 w-4" />
-                Export QR code
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2 border-foreground text-foreground hover:bg-foreground hover:text-background">
+                    Export QR code
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={exportQRCodePng}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download as PNG
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportQRCodeSvg}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download as SVG
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={copyQRCodeSvg}>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy SVG code
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Done Button */}
