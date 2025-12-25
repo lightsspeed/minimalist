@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Check, QrCode, Lock, Eye, EyeOff, RefreshCw, CheckCircle, Share2, Download } from 'lucide-react';
+import { Copy, Check, Lock, Eye, EyeOff, RefreshCw, Share2, Download, ChevronDown } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Note } from '@/hooks/useNotes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -155,14 +161,48 @@ export function NoteShareModal({ open, onOpenChange, note }: NoteShareModalProps
     { value: '1month', label: '1 month' },
   ];
 
-  const exportQRCode = () => {
+  const qrCodeSvgUrl = shareLink
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&format=svg&data=${encodeURIComponent(shareLink)}`
+    : '';
+
+  const exportQRCodePng = () => {
     const link = document.createElement('a');
     link.href = qrCodeUrl;
     link.download = 'note-qr-code.png';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast({ title: 'QR code downloaded!' });
+    toast({ title: 'QR code downloaded as PNG!' });
+  };
+
+  const exportQRCodeSvg = async () => {
+    try {
+      const response = await fetch(qrCodeSvgUrl);
+      const svgText = await response.text();
+      const blob = new Blob([svgText], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'note-qr-code.svg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: 'QR code downloaded as SVG!' });
+    } catch {
+      toast({ title: 'Failed to download SVG', variant: 'destructive' });
+    }
+  };
+
+  const copyQRCodeSvg = async () => {
+    try {
+      const response = await fetch(qrCodeSvgUrl);
+      const svgText = await response.text();
+      await navigator.clipboard.writeText(svgText);
+      toast({ title: 'SVG code copied to clipboard!' });
+    } catch {
+      toast({ title: 'Failed to copy SVG', variant: 'destructive' });
+    }
   };
 
   const shareNative = async () => {

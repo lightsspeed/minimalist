@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Lock, Eye, EyeOff, ArrowLeft, ListTodo } from 'lucide-react';
+import { Lock, Eye, EyeOff, ArrowLeft, ListTodo, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,11 +11,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
+interface SubtaskData {
+  id: string;
+  title: string;
+  is_completed: boolean;
+}
+
 interface SharedNote {
   id: string;
   title: string;
   description: string | null;
   tags: string[];
+  subtasks: SubtaskData[];
   created_at: string;
 }
 
@@ -42,7 +49,7 @@ export default function SharedNote() {
 
     const { data, error } = await supabase
       .from('shared_notes')
-      .select('id, title, description, tags, created_at, password_hash')
+      .select('id, title, description, tags, subtasks, created_at, password_hash')
       .eq('share_token', token)
       .maybeSingle();
 
@@ -77,7 +84,7 @@ export default function SharedNote() {
       // Fetch and verify
       const { data: noteData, error } = await supabase
         .from('shared_notes')
-        .select('id, title, description, tags, created_at, password_hash')
+        .select('id, title, description, tags, subtasks, created_at, password_hash')
         .eq('share_token', token)
         .maybeSingle();
 
@@ -105,6 +112,7 @@ export default function SharedNote() {
         title: noteData.title,
         description: noteData.description,
         tags: noteData.tags || [],
+        subtasks: (noteData.subtasks as unknown as SubtaskData[]) || [],
         created_at: noteData.created_at,
       });
       setUnlocked(true);
@@ -177,9 +185,9 @@ export default function SharedNote() {
               <div className="mx-auto w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-2">
                 <Lock className="h-6 w-6 text-primary" />
               </div>
-              <CardTitle>Protected Note</CardTitle>
+              <CardTitle>Protected Task</CardTitle>
               <CardDescription>
-                Enter the password to view this shared note.
+                Enter the password to view this shared task.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -212,7 +220,7 @@ export default function SharedNote() {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={verifying}>
-                  {verifying ? 'Verifying...' : 'Unlock Note'}
+                  {verifying ? 'Verifying...' : 'Unlock Task'}
                 </Button>
               </form>
             </CardContent>
@@ -229,6 +237,28 @@ export default function SharedNote() {
               {note.description && (
                 <p className="text-foreground whitespace-pre-wrap">{note.description}</p>
               )}
+              
+              {/* Subtasks */}
+              {note.subtasks && note.subtasks.length > 0 && (
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium mb-2">Subtasks</h4>
+                  <ul className="space-y-2">
+                    {note.subtasks.map((subtask) => (
+                      <li key={subtask.id} className="flex items-center gap-2 text-sm">
+                        {subtask.is_completed ? (
+                          <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                        ) : (
+                          <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        )}
+                        <span className={subtask.is_completed ? 'line-through text-muted-foreground' : ''}>
+                          {subtask.title}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {note.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-2">
                   {note.tags.map((tag) => (

@@ -1,13 +1,12 @@
 import { useMemo } from 'react';
-import { Navigate, Link } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Circle, Tag, Calendar, TrendingUp } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Navigate } from 'react-router-dom';
+import { CheckCircle2, Circle, Tag, Calendar, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/hooks/useTasks';
-import { format, subDays, isAfter } from 'date-fns';
+import { subDays, isAfter, format } from 'date-fns';
 
 export default function Analytics() {
   const { user, loading: authLoading } = useAuth();
@@ -65,20 +64,7 @@ export default function Analytics() {
 
   return (
     <div className="min-h-screen bg-background transition-theme">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
-        <div className="container max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link to="/">
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-            <h1 className="font-semibold text-lg">Analytics</h1>
-          </div>
-          <ThemeToggle />
-        </div>
-      </header>
+      <NavBar />
 
       <main className="container max-w-4xl mx-auto px-4 py-6">
         {tasksLoading ? (

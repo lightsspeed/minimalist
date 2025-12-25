@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       notes: {
         Row: {
+          attachments: Json | null
           content: string
           created_at: string
           id: string
@@ -23,6 +24,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attachments?: Json | null
           content?: string
           created_at?: string
           id?: string
@@ -30,6 +32,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attachments?: Json | null
           content?: string
           created_at?: string
           id?: string
@@ -70,6 +73,7 @@ export type Database = {
           id: string
           password_hash: string
           share_token: string
+          subtasks: Json | null
           tags: string[] | null
           task_id: string
           title: string
@@ -81,6 +85,7 @@ export type Database = {
           id?: string
           password_hash: string
           share_token: string
+          subtasks?: Json | null
           tags?: string[] | null
           task_id: string
           title: string
@@ -92,6 +97,7 @@ export type Database = {
           id?: string
           password_hash?: string
           share_token?: string
+          subtasks?: Json | null
           tags?: string[] | null
           task_id?: string
           title?: string

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Navigate, Link } from 'react-router-dom';
-import { Plus, LogOut, ListTodo, X, BarChart3, FileText } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
+import { Plus, X, ListTodo } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { NavBar } from '@/components/NavBar';
 import { TaskCard } from '@/components/TaskCard';
 import { TaskModal } from '@/components/TaskModal';
 import { ShareModal } from '@/components/ShareModal';
@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function Dashboard() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { tasks, loading: tasksLoading, addTask, updateTask, deleteTask, reorderTasks } = useTasks();
   
   const [taskModalOpen, setTaskModalOpen] = useState(false);
@@ -190,39 +190,9 @@ export default function Dashboard() {
     setActiveTag(activeTag === tag ? null : tag);
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-  };
-
   return (
     <div className="min-h-screen bg-background transition-theme">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
-        <div className="container max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <ListTodo className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <h1 className="font-semibold text-lg">Minimalist</h1>
-          </div>
-          <div className="flex items-center gap-1">
-            <Link to="/notes">
-              <Button variant="ghost" size="icon" title="Notes">
-                <FileText className="h-5 w-5" />
-              </Button>
-            </Link>
-            <Link to="/analytics">
-              <Button variant="ghost" size="icon" title="Analytics">
-                <BarChart3 className="h-5 w-5" />
-              </Button>
-            </Link>
-            <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign out">
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-      </header>
+      <NavBar />
 
       {/* Main Content */}
       <main className="container max-w-3xl mx-auto px-4 py-6">
