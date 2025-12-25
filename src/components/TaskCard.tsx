@@ -55,7 +55,7 @@ export function TaskCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'transition-all duration-200 hover:shadow-md animate-fade-in',
+        'transition-all duration-200 hover:shadow-md hover:bg-hover-blue animate-fade-in',
         task.is_completed && 'opacity-60',
         isDragging && 'opacity-50 shadow-lg'
       )}

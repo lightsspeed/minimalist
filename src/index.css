@@ -42,6 +42,8 @@
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
 
+    --hover-blue: 228 60% 97%;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 225 10% 26%;
     --sidebar-primary: 228 76% 57%;
@@ -86,6 +88,8 @@
 
     --success: 142 60% 45%;
     --success-foreground: 0 0% 100%;
+
+    --hover-blue: 228 40% 18%;
 
     --sidebar-background: 225 25% 10%;
     --sidebar-foreground: 225 10% 90%;

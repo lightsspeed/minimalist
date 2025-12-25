@@ -19,7 +19,9 @@ export type Database = {
           attachments: Json | null
           content: string
           created_at: string
+          folder: string | null
           id: string
+          tags: string[] | null
           updated_at: string
           user_id: string
         }
@@ -27,7 +29,9 @@ export type Database = {
           attachments?: Json | null
           content?: string
           created_at?: string
+          folder?: string | null
           id?: string
+          tags?: string[] | null
           updated_at?: string
           user_id: string
         }
@@ -35,7 +39,9 @@ export type Database = {
           attachments?: Json | null
           content?: string
           created_at?: string
+          folder?: string | null
           id?: string
+          tags?: string[] | null
           updated_at?: string
           user_id?: string
         }
