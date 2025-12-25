@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Pencil, Trash2, Share2, Check, Circle } from 'lucide-react';
+import { Pencil, Trash2, Share2, Check, Circle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { TagBadge } from './TagBadge';
+import { SubtaskList } from './SubtaskList';
 import { Task } from '@/hooks/useTasks';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -25,6 +26,7 @@ export function TaskCard({
   onTagClick 
 }: TaskCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [showSubtasks, setShowSubtasks] = useState(false);
 
   return (
     <Card 
@@ -68,6 +70,18 @@ export function TaskCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8"
+              onClick={() => setShowSubtasks(!showSubtasks)}
+            >
+              {showSubtasks ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
               onClick={() => onEdit(task)}
             >
               <Pencil className="h-4 w-4" />
@@ -91,29 +105,28 @@ export function TaskCard({
           </div>
         </div>
       </CardHeader>
-      {(task.description || task.tags.length > 0) && (
-        <CardContent className="pt-0">
-          {task.description && (
-            <p className={cn(
-              'text-sm text-muted-foreground mb-3',
-              task.is_completed && 'line-through'
-            )}>
-              {task.description}
-            </p>
-          )}
-          {task.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {task.tags.map((tag) => (
-                <TagBadge 
-                  key={tag} 
-                  tag={tag} 
-                  onClick={() => onTagClick?.(tag)}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      )}
+      <CardContent className="pt-0">
+        {task.description && (
+          <p className={cn(
+            'text-sm text-muted-foreground mb-3',
+            task.is_completed && 'line-through'
+          )}>
+            {task.description}
+          </p>
+        )}
+        {task.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {task.tags.map((tag) => (
+              <TagBadge 
+                key={tag} 
+                tag={tag} 
+                onClick={() => onTagClick?.(tag)}
+              />
+            ))}
+          </div>
+        )}
+        {showSubtasks && <SubtaskList taskId={task.id} />}
+      </CardContent>
     </Card>
   );
 }

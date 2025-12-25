@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
-import { Navigate } from 'react-router-dom';
-import { Plus, LogOut, ListTodo, X } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { Navigate, Link } from 'react-router-dom';
+import { Plus, LogOut, ListTodo, X, BarChart3, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TaskCard } from '@/components/TaskCard';
@@ -44,7 +44,7 @@ export default function Dashboard() {
     return Array.from(tagSet).sort();
   }, [tasks]);
 
-  // Filter and sort tasks
+  // Filter and sort tasks - completed tasks go to bottom
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
     
@@ -63,8 +63,13 @@ export default function Dashboard() {
       result = result.filter((task) => task.tags.includes(activeTag));
     }
     
-    // Sort
+    // Sort - completed tasks always at bottom
     result.sort((a, b) => {
+      // First, sort by completion status
+      if (a.is_completed !== b.is_completed) {
+        return a.is_completed ? 1 : -1;
+      }
+      // Then sort by date
       const dateA = new Date(a.created_at).getTime();
       const dateB = new Date(b.created_at).getTime();
       return sortOption === 'newest' ? dateB - dateA : dateA - dateB;
@@ -72,6 +77,28 @@ export default function Dashboard() {
     
     return result;
   }, [tasks, searchQuery, sortOption, activeTag]);
+
+  // Keyboard shortcuts
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Cmd/Ctrl + N to add new task
+    if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+      e.preventDefault();
+      setSelectedTask(null);
+      setModalMode('add');
+      setTaskModalOpen(true);
+    }
+    // Escape to close modals
+    if (e.key === 'Escape') {
+      setTaskModalOpen(false);
+      setShareModalOpen(false);
+      setDeleteDialogOpen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   if (authLoading) {
     return (
@@ -144,11 +171,21 @@ export default function Dashboard() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <ListTodo className="h-4 w-4 text-primary-foreground" />
             </div>
-            <h1 className="font-semibold text-lg">Tasks</h1>
+            <h1 className="font-semibold text-lg">Minimalist</h1>
           </div>
           <div className="flex items-center gap-1">
+            <Link to="/notes">
+              <Button variant="ghost" size="icon" title="Notes">
+                <FileText className="h-5 w-5" />
+              </Button>
+            </Link>
+            <Link to="/analytics">
+              <Button variant="ghost" size="icon" title="Analytics">
+                <BarChart3 className="h-5 w-5" />
+              </Button>
+            </Link>
             <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={handleSignOut}>
+            <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign out">
               <LogOut className="h-5 w-5" />
             </Button>
           </div>
@@ -195,6 +232,11 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+
+        {/* Keyboard hint */}
+        <p className="text-xs text-muted-foreground mb-4">
+          Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">⌘N</kbd> to add a task
+        </p>
 
         {/* Task List */}
         {tasksLoading ? (
