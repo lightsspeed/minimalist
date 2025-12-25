@@ -2,99 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Royal Purple Design System - Task & Notes App */
+/* Blue Design System - Task & Notes App */
 
 @layer base {
   :root {
     --background: 0 0% 98%;
-    --foreground: 270 10% 15%;
+    --foreground: 225 15% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 270 10% 15%;
+    --card-foreground: 225 15% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 270 10% 15%;
+    --popover-foreground: 225 15% 15%;
 
-    --primary: 262 83% 58%;
+    --primary: 228 76% 57%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 262 20% 95%;
-    --secondary-foreground: 262 30% 30%;
+    --secondary: 228 30% 95%;
+    --secondary-foreground: 228 40% 30%;
 
-    --muted: 262 10% 94%;
-    --muted-foreground: 262 10% 45%;
+    --muted: 228 15% 94%;
+    --muted-foreground: 228 10% 45%;
 
-    --accent: 262 50% 92%;
-    --accent-foreground: 262 60% 35%;
+    --accent: 228 50% 92%;
+    --accent-foreground: 228 60% 35%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 262 15% 88%;
-    --input: 262 15% 88%;
-    --ring: 262 83% 58%;
+    --border: 228 20% 88%;
+    --input: 228 20% 88%;
+    --ring: 228 76% 57%;
 
     --radius: 0.75rem;
 
-    --tag: 262 70% 95%;
-    --tag-foreground: 262 70% 40%;
+    --tag: 228 70% 95%;
+    --tag-foreground: 228 70% 40%;
 
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
 
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 262 83% 58%;
+    --sidebar-foreground: 225 10% 26%;
+    --sidebar-primary: 228 76% 57%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 262 20% 95%;
-    --sidebar-accent-foreground: 262 30% 30%;
-    --sidebar-border: 262 15% 88%;
-    --sidebar-ring: 262 83% 58%;
+    --sidebar-accent: 228 30% 95%;
+    --sidebar-accent-foreground: 228 40% 30%;
+    --sidebar-border: 228 20% 88%;
+    --sidebar-ring: 228 76% 57%;
   }
 
   .dark {
-    --background: 270 20% 8%;
-    --foreground: 270 5% 95%;
+    --background: 225 25% 8%;
+    --foreground: 225 10% 95%;
 
-    --card: 270 20% 12%;
-    --card-foreground: 270 5% 95%;
+    --card: 225 25% 12%;
+    --card-foreground: 225 10% 95%;
 
-    --popover: 270 20% 12%;
-    --popover-foreground: 270 5% 95%;
+    --popover: 225 25% 12%;
+    --popover-foreground: 225 10% 95%;
 
-    --primary: 262 83% 65%;
-    --primary-foreground: 270 20% 8%;
+    --primary: 228 76% 62%;
+    --primary-foreground: 225 25% 8%;
 
-    --secondary: 270 20% 18%;
-    --secondary-foreground: 270 5% 90%;
+    --secondary: 225 25% 18%;
+    --secondary-foreground: 225 10% 90%;
 
-    --muted: 270 15% 20%;
-    --muted-foreground: 270 10% 60%;
+    --muted: 225 20% 20%;
+    --muted-foreground: 225 15% 60%;
 
-    --accent: 262 40% 25%;
-    --accent-foreground: 262 60% 85%;
+    --accent: 228 40% 25%;
+    --accent-foreground: 228 60% 85%;
 
     --destructive: 0 70% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 270 15% 22%;
-    --input: 270 15% 22%;
-    --ring: 262 83% 65%;
+    --border: 225 20% 22%;
+    --input: 225 20% 22%;
+    --ring: 228 76% 62%;
 
-    --tag: 262 40% 25%;
-    --tag-foreground: 262 60% 80%;
+    --tag: 228 40% 25%;
+    --tag-foreground: 228 60% 80%;
 
     --success: 142 60% 45%;
     --success-foreground: 0 0% 100%;
 
-    --sidebar-background: 270 20% 10%;
-    --sidebar-foreground: 270 5% 90%;
-    --sidebar-primary: 262 83% 65%;
-    --sidebar-primary-foreground: 270 20% 8%;
-    --sidebar-accent: 270 20% 18%;
-    --sidebar-accent-foreground: 270 5% 90%;
-    --sidebar-border: 270 15% 22%;
-    --sidebar-ring: 262 83% 65%;
+    --sidebar-background: 225 25% 10%;
+    --sidebar-foreground: 225 10% 90%;
+    --sidebar-primary: 228 76% 62%;
+    --sidebar-primary-foreground: 225 25% 8%;
+    --sidebar-accent: 225 25% 18%;
+    --sidebar-accent-foreground: 225 10% 90%;
+    --sidebar-border: 225 20% 22%;
+    --sidebar-ring: 228 76% 62%;
   }
 }
 
