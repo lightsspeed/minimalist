@@ -116,4 +116,18 @@
   .transition-theme {
     @apply transition-colors duration-300 ease-in-out;
   }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 0% 0%;
+    }
+    100% {
+      background-position: 100% 100%;
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 15s linear infinite;
+    background-size: 200% 200%;
+  }
 }

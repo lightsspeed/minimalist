@@ -175,24 +175,36 @@ export default function Auth() {
         {/* Full background - white in light, black in dark */}
         <div className="absolute inset-0 bg-white dark:bg-black" />
         
-        {/* Diagonal stripes pattern - subtle */}
-        <div className="dark:hidden absolute inset-0 opacity-[0.035]" style={{
+        {/* Diagonal stripes pattern with shimmer - subtle */}
+        <div className="dark:hidden absolute inset-0 opacity-[0.035] animate-shimmer" style={{
           backgroundImage: `repeating-linear-gradient(
             45deg,
             transparent,
             transparent 20px,
             rgba(0,0,0,0.4) 20px,
             rgba(0,0,0,0.4) 22px
-          )`
+          ), linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(0,0,0,0.03) 50%,
+            transparent 100%
+          )`,
+          backgroundSize: '100% 100%, 200% 200%'
         }} />
-        <div className="hidden dark:block absolute inset-0 opacity-[0.045]" style={{
+        <div className="hidden dark:block absolute inset-0 opacity-[0.045] animate-shimmer" style={{
           backgroundImage: `repeating-linear-gradient(
             45deg,
             transparent,
             transparent 20px,
             rgba(255,255,255,0.4) 20px,
             rgba(255,255,255,0.4) 22px
-          )`
+          ), linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(255,255,255,0.05) 50%,
+            transparent 100%
+          )`,
+          backgroundSize: '100% 100%, 200% 200%'
         }} />
         
         {/* Subtle gradient overlay for depth */}
@@ -257,24 +269,36 @@ export default function Auth() {
 
       {/* Right side - Auth form */}
       <div className="flex-1 flex flex-col relative bg-white dark:bg-black">
-        {/* Diagonal stripes pattern for form side - subtle */}
-        <div className="dark:hidden absolute inset-0 opacity-[0.025]" style={{
+        {/* Diagonal stripes pattern for form side with shimmer - subtle */}
+        <div className="dark:hidden absolute inset-0 opacity-[0.025] animate-shimmer" style={{
           backgroundImage: `repeating-linear-gradient(
             -45deg,
             transparent,
             transparent 30px,
             rgba(0,0,0,0.3) 30px,
             rgba(0,0,0,0.3) 32px
-          )`
+          ), linear-gradient(
+            -90deg,
+            transparent 0%,
+            rgba(0,0,0,0.03) 50%,
+            transparent 100%
+          )`,
+          backgroundSize: '100% 100%, 200% 200%'
         }} />
-        <div className="hidden dark:block absolute inset-0 opacity-[0.035]" style={{
+        <div className="hidden dark:block absolute inset-0 opacity-[0.035] animate-shimmer" style={{
           backgroundImage: `repeating-linear-gradient(
             -45deg,
             transparent,
             transparent 30px,
             rgba(255,255,255,0.3) 30px,
             rgba(255,255,255,0.3) 32px
-          )`
+          ), linear-gradient(
+            -90deg,
+            transparent 0%,
+            rgba(255,255,255,0.05) 50%,
+            transparent 100%
+          )`,
+          backgroundSize: '100% 100%, 200% 200%'
         }} />
         
         {/* Subtle glow effects */}
