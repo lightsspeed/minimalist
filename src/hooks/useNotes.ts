@@ -7,6 +7,8 @@ export interface Note {
   id: string;
   user_id: string;
   content: string;
+  folder: string | null;
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
@@ -65,10 +67,10 @@ export function useNotes() {
     return { error: null, data };
   };
 
-  const updateNote = async (id: string, content: string) => {
+  const updateNote = async (id: string, updates: { content?: string; folder?: string | null; tags?: string[] }) => {
     const { error } = await supabase
       .from('notes')
-      .update({ content })
+      .update(updates)
       .eq('id', id);
 
     if (error) {
@@ -78,7 +80,7 @@ export function useNotes() {
 
     // Update locally for responsiveness
     setNotes(prev => prev.map(note => 
-      note.id === id ? { ...note, content, updated_at: new Date().toISOString() } : note
+      note.id === id ? { ...note, ...updates, updated_at: new Date().toISOString() } : note
     ));
     return { error: null };
   };

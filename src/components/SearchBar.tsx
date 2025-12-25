@@ -81,7 +81,7 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder="Search tasks..."
-            className="pl-9 pr-9"
+            className="pl-9 pr-9 focus:bg-hover-blue transition-colors"
             onBlur={() => {
               if (!value) {
                 setIsExpanded(false);
