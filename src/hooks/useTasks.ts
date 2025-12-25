@@ -189,7 +189,7 @@ export function useTasks() {
     return { error: null };
   };
 
-  const convertToNote = async (task: Task) => {
+  const sendToNotes = async (task: Task) => {
     if (!user) return { error: new Error('Not authenticated') };
 
     // Create note content from task
@@ -203,30 +203,14 @@ export function useTasks() {
 
     if (noteError) {
       toast({
-        title: 'Error creating note',
+        title: 'Error sending to notes',
         description: noteError.message,
         variant: 'destructive',
       });
       return { error: noteError };
     }
 
-    // Delete the task
-    const { error: deleteError } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', task.id);
-
-    if (deleteError) {
-      toast({
-        title: 'Error deleting task',
-        description: deleteError.message,
-        variant: 'destructive',
-      });
-      return { error: deleteError };
-    }
-
-    toast({ title: 'Task converted to note' });
-    await fetchTasks();
+    toast({ title: 'Sent to notes' });
     return { error: null };
   };
 
@@ -278,7 +262,7 @@ export function useTasks() {
     reorderTasks,
     togglePin,
     toggleTemplate,
-    convertToNote,
+    sendToNotes,
     refetch: fetchTasks,
   };
 }

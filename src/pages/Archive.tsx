@@ -24,7 +24,7 @@ import {
 
 export default function ArchivePage() {
   const { user, loading: authLoading } = useAuth();
-  const { tasks, loading: tasksLoading, updateTask, deleteTask, togglePin, toggleTemplate, convertToNote, addTaskFromTemplate } = useTasks();
+  const { tasks, loading: tasksLoading, updateTask, deleteTask, togglePin, toggleTemplate, sendToNotes, addTaskFromTemplate } = useTasks();
   
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -118,7 +118,7 @@ export default function ArchivePage() {
   };
 
   const handleConvertToNote = async (task: Task) => {
-    await convertToNote(task);
+    await sendToNotes(task);
   };
 
   const handleSaveAsTemplate = async (task: Task) => {

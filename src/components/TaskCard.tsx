@@ -176,7 +176,7 @@ export function TaskCard({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onConvertToNote(task)}>
                   <FileText className="h-4 w-4 mr-2" />
-                  Convert to Note
+                  Send to Notes
                 </DropdownMenuItem>
                 {onSaveAsTemplate && (
                   <DropdownMenuItem onClick={() => onSaveAsTemplate(task)}>
