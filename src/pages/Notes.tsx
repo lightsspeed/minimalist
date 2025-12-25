@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Plus, Trash2, FileText, Share2, FolderOpen, Tag, X } from 'lucide-react';
+import { Plus, Trash2, FileText, Share2, FolderOpen, Tag, X, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,15 +41,20 @@ export default function Notes() {
   const [noteToShare, setNoteToShare] = useState<Note | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get unique folders from notes
   const folders = [...new Set(notes.map(n => n.folder).filter(Boolean))] as string[];
 
-  // Filter notes by selected folder
-  const filteredNotes = selectedFolder 
-    ? notes.filter(n => n.folder === selectedFolder)
-    : notes;
+  // Filter notes by selected folder and search query
+  const filteredNotes = notes.filter(n => {
+    const matchesFolder = !selectedFolder || n.folder === selectedFolder;
+    const matchesSearch = !searchQuery || 
+      n.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (n.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesFolder && matchesSearch;
+  });
 
   // Auto-select first note or newly created note
   useEffect(() => {
@@ -196,10 +201,34 @@ export default function Notes() {
           <>
             {/* Notes List - Sidebar */}
             <div className="w-full md:w-72 flex-shrink-0">
-              <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2">
+                {/* Search */}
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search notes..."
+                    className="h-8 text-xs pl-7 pr-7 border-0 bg-muted/50 focus:bg-hover-blue focus-visible:ring-0"
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                <Button size="sm" onClick={handleCreateNote} className="gap-1.5 shrink-0">
+                  <Plus className="h-4 w-4" />
+                  New
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 mb-2">
                 {/* Folder filter */}
                 <Select value={selectedFolder || 'all'} onValueChange={(v) => setSelectedFolder(v === 'all' ? null : v)}>
-                  <SelectTrigger className="w-36 h-8 text-xs">
+                  <SelectTrigger className="w-full h-8 text-xs">
                     <FolderOpen className="h-3 w-3 mr-1" />
                     <SelectValue placeholder="All folders" />
                   </SelectTrigger>
@@ -210,10 +239,6 @@ export default function Notes() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button size="sm" onClick={handleCreateNote} className="gap-1.5">
-                  <Plus className="h-4 w-4" />
-                  New Note
-                </Button>
               </div>
               <div className="space-y-2 max-h-[calc(100vh-180px)] overflow-y-auto">
                 {filteredNotes.map((note) => (
