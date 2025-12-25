@@ -5,9 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import logo from '@/assets/logo.png';
+import authBgLight from '@/assets/auth-bg-light.png';
+import authBgDark from '@/assets/auth-bg-dark.png';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -45,6 +48,7 @@ const highlights = [
 
 export default function Auth() {
   const { user, loading, signIn, signUp, resetPassword, updatePassword } = useAuth();
+  const { isDark } = useTheme();
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
@@ -240,11 +244,14 @@ export default function Auth() {
       </div>
 
       {/* Right side - Auth form */}
-      <div className="flex-1 flex flex-col relative">
-        {/* Subtle background pattern for form side */}
-        <div className="absolute inset-0 bg-gradient-to-br from-muted/30 via-background to-muted/20" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+      <div className="flex-1 flex flex-col relative overflow-hidden">
+        {/* Background image - switches based on theme */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-500"
+          style={{ backgroundImage: `url(${isDark ? authBgDark : authBgLight})` }}
+        />
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 bg-background/40 backdrop-blur-[1px]" />
 
         {/* Theme toggle */}
         <header className="absolute top-4 right-4 z-20">
