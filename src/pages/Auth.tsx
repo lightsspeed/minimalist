@@ -172,9 +172,10 @@ export default function Auth() {
     <div className="min-h-screen flex bg-background transition-theme overflow-hidden">
       {/* Left side - Feature showcase */}
       <div className="hidden lg:flex lg:w-[55%] relative">
-        {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/80 to-primary/60" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/20 via-transparent to-transparent" />
+        {/* Pure royal blue gradient background */}
+        <div className="absolute inset-0 bg-[hsl(225,73%,57%)]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(225,90%,65%)] via-[hsl(225,73%,57%)] to-[hsl(225,80%,45%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/25 via-transparent to-transparent" />
         
         {/* Animated floating shapes */}
         <div className="absolute top-20 left-20 w-32 h-32 bg-white/10 rounded-full blur-xl animate-pulse" />
