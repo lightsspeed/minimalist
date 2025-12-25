@@ -169,14 +169,41 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex bg-black transition-theme overflow-hidden">
+    <div className="min-h-screen flex bg-white dark:bg-black transition-theme overflow-hidden">
       {/* Left side - Feature showcase */}
       <div className="hidden lg:flex lg:w-[55%] relative">
-        {/* Full black background */}
-        <div className="absolute inset-0 bg-black" />
+        {/* Full background - white in light, black in dark */}
+        <div className="absolute inset-0 bg-white dark:bg-black" />
         
-        {/* Diagonal stripes pattern */}
-        <div className="absolute inset-0 opacity-[0.08]" style={{
+        {/* Diagonal stripes pattern - dark stripes on light, light stripes on dark */}
+        <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.08]" style={{
+          backgroundImage: `repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 20px,
+            currentColor 20px,
+            currentColor 22px
+          )`
+        }} />
+        <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.08] text-black dark:text-white" style={{
+          backgroundImage: `repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 20px,
+            rgba(0,0,0,0.5) 20px,
+            rgba(0,0,0,0.5) 22px
+          )`
+        }} />
+        <div className="dark:hidden absolute inset-0 opacity-[0.06]" style={{
+          backgroundImage: `repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 20px,
+            rgba(0,0,0,0.5) 20px,
+            rgba(0,0,0,0.5) 22px
+          )`
+        }} />
+        <div className="hidden dark:block absolute inset-0 opacity-[0.08]" style={{
           backgroundImage: `repeating-linear-gradient(
             45deg,
             transparent,
@@ -187,32 +214,32 @@ export default function Auth() {
         }} />
         
         {/* Subtle gradient overlay for depth */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-white/[0.02]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/[0.02] dark:from-white/[0.02] via-transparent to-black/[0.02] dark:to-white/[0.02]" />
         
         {/* Animated floating shapes */}
         <div className="absolute top-20 left-20 w-32 h-32 bg-primary/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-32 right-20 w-48 h-48 bg-primary/15 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-white/5 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-black/5 dark:bg-white/5 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '2s' }} />
 
-        <div className="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full text-white">
+        <div className="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full text-black dark:text-white">
           {/* Header */}
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10">
-                <img src={logo} alt="Minimalist" className="h-8 w-auto brightness-0 invert" />
+              <div className="p-2 bg-black/10 dark:bg-white/10 backdrop-blur-sm rounded-xl border border-black/10 dark:border-white/10">
+                <img src={logo} alt="Minimalist" className="h-8 w-auto dark:brightness-0 dark:invert" />
               </div>
               <span className="text-2xl font-bold">Minimalist</span>
             </div>
-            <p className="text-white/50 text-sm">Task & Notes</p>
+            <p className="text-black/50 dark:text-white/50 text-sm">Task & Notes</p>
           </div>
 
           {/* Main content */}
           <div className="py-8">
             <h2 className="text-4xl xl:text-5xl font-bold mb-4 leading-tight">
               Organize your life,<br />
-              <span className="text-white/80">beautifully.</span>
+              <span className="text-black/80 dark:text-white/80">beautifully.</span>
             </h2>
-            <p className="text-lg text-white/50 mb-10 max-w-md">
+            <p className="text-lg text-black/50 dark:text-white/50 mb-10 max-w-md">
               The minimalist productivity app that helps you focus on what matters most.
             </p>
 
@@ -221,14 +248,14 @@ export default function Auth() {
               {features.map((feature, index) => (
                 <div
                   key={feature.title}
-                  className="group p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 animate-fade-in"
+                  className="group p-4 rounded-2xl bg-black/5 dark:bg-white/5 backdrop-blur-sm border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 hover:border-black/20 dark:hover:border-white/20 transition-all duration-300 animate-fade-in"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="w-10 h-10 rounded-xl bg-primary/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                     <feature.icon className="h-5 w-5 text-primary-foreground" />
                   </div>
                   <h3 className="font-semibold text-sm mb-1">{feature.title}</h3>
-                  <p className="text-xs text-white/40 leading-relaxed">{feature.description}</p>
+                  <p className="text-xs text-black/40 dark:text-white/40 leading-relaxed">{feature.description}</p>
                 </div>
               ))}
             </div>
@@ -237,7 +264,7 @@ export default function Auth() {
           {/* Footer highlights */}
           <div className="flex items-center gap-6">
             {highlights.map((item, index) => (
-              <div key={index} className="flex items-center gap-2 text-sm text-white/50">
+              <div key={index} className="flex items-center gap-2 text-sm text-black/50 dark:text-white/50">
                 <item.icon className="h-4 w-4" />
                 <span>{item.text}</span>
               </div>
@@ -247,9 +274,18 @@ export default function Auth() {
       </div>
 
       {/* Right side - Auth form */}
-      <div className="flex-1 flex flex-col relative bg-black">
-        {/* Diagonal stripes pattern for form side */}
-        <div className="absolute inset-0 opacity-[0.05]" style={{
+      <div className="flex-1 flex flex-col relative bg-white dark:bg-black">
+        {/* Diagonal stripes pattern for form side - reversed angle */}
+        <div className="dark:hidden absolute inset-0 opacity-[0.04]" style={{
+          backgroundImage: `repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 30px,
+            rgba(0,0,0,0.3) 30px,
+            rgba(0,0,0,0.3) 32px
+          )`
+        }} />
+        <div className="hidden dark:block absolute inset-0 opacity-[0.05]" style={{
           backgroundImage: `repeating-linear-gradient(
             -45deg,
             transparent,
@@ -275,7 +311,7 @@ export default function Auth() {
               <button
                 type="button"
                 onClick={() => setMode('login')}
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
+                className="flex items-center gap-1 text-sm text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white mb-6 transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to sign in
@@ -284,31 +320,31 @@ export default function Auth() {
 
             {/* Logo & Title */}
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center p-3 bg-white/10 rounded-2xl mb-6 border border-white/10">
-                <img src={logo} alt="Minimalist" className="h-10 w-auto brightness-0 invert" />
+              <div className="inline-flex items-center justify-center p-3 bg-black/10 dark:bg-white/10 rounded-2xl mb-6 border border-black/10 dark:border-white/10">
+                <img src={logo} alt="Minimalist" className="h-10 w-auto dark:brightness-0 dark:invert" />
               </div>
-              <h1 className="text-3xl font-bold text-white mb-2">
+              <h1 className="text-3xl font-bold text-black dark:text-white mb-2">
                 {getTitle()}
               </h1>
-              <p className="text-white/60">
+              <p className="text-black/60 dark:text-white/60">
                 {getSubtitle()}
               </p>
             </div>
 
             {/* Form card */}
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 shadow-xl">
+            <div className="bg-black/5 dark:bg-white/5 backdrop-blur-sm border border-black/10 dark:border-white/10 rounded-2xl p-6 shadow-xl">
               <form onSubmit={handleSubmit} className="space-y-4">
                 {mode !== 'reset' && (
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-white">Email</label>
+                    <label className="text-sm font-medium text-black dark:text-white">Email</label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50 dark:text-white/50" />
                       <Input
                         type="email"
                         value={email}
                         onChange={(e) => { setEmail(e.target.value); setErrors((prev) => ({ ...prev, email: undefined })); }}
                         placeholder="you@example.com"
-                        className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50"
+                        className="pl-10 h-12 bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50"
                         autoComplete="email"
                       />
                     </div>
@@ -318,15 +354,15 @@ export default function Auth() {
 
                 {mode !== 'forgot' && (
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-white">Password</label>
+                    <label className="text-sm font-medium text-black dark:text-white">Password</label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50 dark:text-white/50" />
                       <Input
                         type="password"
                         value={password}
                         onChange={(e) => { setPassword(e.target.value); setErrors((prev) => ({ ...prev, password: undefined })); }}
                         placeholder={mode === 'reset' ? 'New password' : '••••••••'}
-                        className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50"
+                        className="pl-10 h-12 bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50"
                         autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                       />
                     </div>
@@ -336,15 +372,15 @@ export default function Auth() {
 
                 {mode === 'reset' && (
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-white">Confirm Password</label>
+                    <label className="text-sm font-medium text-black dark:text-white">Confirm Password</label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50 dark:text-white/50" />
                       <Input
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => { setConfirmPassword(e.target.value); setErrors((prev) => ({ ...prev, confirmPassword: undefined })); }}
                         placeholder="••••••••"
-                        className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50"
+                        className="pl-10 h-12 bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50"
                         autoComplete="new-password"
                       />
                     </div>
@@ -357,7 +393,7 @@ export default function Auth() {
                     <button
                       type="button"
                       onClick={() => { setMode('forgot'); setErrors({}); }}
-                      className="text-sm text-white/50 hover:text-primary transition-colors"
+                      className="text-sm text-black/50 dark:text-white/50 hover:text-primary transition-colors"
                     >
                       Forgot password?
                     </button>
@@ -370,8 +406,8 @@ export default function Auth() {
               </form>
 
               {(mode === 'login' || mode === 'signup') && (
-                <div className="mt-6 pt-6 border-t border-white/10">
-                  <p className="text-center text-sm text-white/60">
+                <div className="mt-6 pt-6 border-t border-black/10 dark:border-white/10">
+                  <p className="text-center text-sm text-black/60 dark:text-white/60">
                     {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
                     <button
                       type="button"
@@ -390,9 +426,9 @@ export default function Auth() {
               <div className="lg:hidden mt-8">
                 <div className="flex flex-wrap justify-center gap-3">
                   {features.map((feature) => (
-                    <div key={feature.title} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 border border-white/10 rounded-full">
+                    <div key={feature.title} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/10 dark:bg-white/10 border border-black/10 dark:border-white/10 rounded-full">
                       <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-xs font-medium text-white">{feature.title}</span>
+                      <span className="text-xs font-medium text-black dark:text-white">{feature.title}</span>
                     </div>
                   ))}
                 </div>
