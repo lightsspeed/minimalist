@@ -175,41 +175,23 @@ export default function Auth() {
         {/* Full background - white in light, black in dark */}
         <div className="absolute inset-0 bg-white dark:bg-black" />
         
-        {/* Diagonal stripes pattern - dark stripes on light, light stripes on dark */}
-        <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.08]" style={{
+        {/* Diagonal stripes pattern - very faint */}
+        <div className="dark:hidden absolute inset-0 opacity-[0.02]" style={{
           backgroundImage: `repeating-linear-gradient(
             45deg,
             transparent,
             transparent 20px,
-            currentColor 20px,
-            currentColor 22px
+            rgba(0,0,0,0.4) 20px,
+            rgba(0,0,0,0.4) 22px
           )`
         }} />
-        <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.08] text-black dark:text-white" style={{
+        <div className="hidden dark:block absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: `repeating-linear-gradient(
             45deg,
             transparent,
             transparent 20px,
-            rgba(0,0,0,0.5) 20px,
-            rgba(0,0,0,0.5) 22px
-          )`
-        }} />
-        <div className="dark:hidden absolute inset-0 opacity-[0.06]" style={{
-          backgroundImage: `repeating-linear-gradient(
-            45deg,
-            transparent,
-            transparent 20px,
-            rgba(0,0,0,0.5) 20px,
-            rgba(0,0,0,0.5) 22px
-          )`
-        }} />
-        <div className="hidden dark:block absolute inset-0 opacity-[0.08]" style={{
-          backgroundImage: `repeating-linear-gradient(
-            45deg,
-            transparent,
-            transparent 20px,
-            rgba(255,255,255,0.5) 20px,
-            rgba(255,255,255,0.5) 22px
+            rgba(255,255,255,0.4) 20px,
+            rgba(255,255,255,0.4) 22px
           )`
         }} />
         
@@ -275,8 +257,8 @@ export default function Auth() {
 
       {/* Right side - Auth form */}
       <div className="flex-1 flex flex-col relative bg-white dark:bg-black">
-        {/* Diagonal stripes pattern for form side - reversed angle */}
-        <div className="dark:hidden absolute inset-0 opacity-[0.04]" style={{
+        {/* Diagonal stripes pattern for form side - very faint */}
+        <div className="dark:hidden absolute inset-0 opacity-[0.015]" style={{
           backgroundImage: `repeating-linear-gradient(
             -45deg,
             transparent,
@@ -285,7 +267,7 @@ export default function Auth() {
             rgba(0,0,0,0.3) 32px
           )`
         }} />
-        <div className="hidden dark:block absolute inset-0 opacity-[0.05]" style={{
+        <div className="hidden dark:block absolute inset-0 opacity-[0.025]" style={{
           backgroundImage: `repeating-linear-gradient(
             -45deg,
             transparent,
