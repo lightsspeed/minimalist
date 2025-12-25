@@ -175,8 +175,8 @@ export default function Auth() {
         {/* Full background - white in light, black in dark */}
         <div className="absolute inset-0 bg-white dark:bg-black" />
         
-        {/* Diagonal stripes pattern - very faint */}
-        <div className="dark:hidden absolute inset-0 opacity-[0.02]" style={{
+        {/* Diagonal stripes pattern - subtle */}
+        <div className="dark:hidden absolute inset-0 opacity-[0.035]" style={{
           backgroundImage: `repeating-linear-gradient(
             45deg,
             transparent,
@@ -185,7 +185,7 @@ export default function Auth() {
             rgba(0,0,0,0.4) 22px
           )`
         }} />
-        <div className="hidden dark:block absolute inset-0 opacity-[0.03]" style={{
+        <div className="hidden dark:block absolute inset-0 opacity-[0.045]" style={{
           backgroundImage: `repeating-linear-gradient(
             45deg,
             transparent,
@@ -257,8 +257,8 @@ export default function Auth() {
 
       {/* Right side - Auth form */}
       <div className="flex-1 flex flex-col relative bg-white dark:bg-black">
-        {/* Diagonal stripes pattern for form side - very faint */}
-        <div className="dark:hidden absolute inset-0 opacity-[0.015]" style={{
+        {/* Diagonal stripes pattern for form side - subtle */}
+        <div className="dark:hidden absolute inset-0 opacity-[0.025]" style={{
           backgroundImage: `repeating-linear-gradient(
             -45deg,
             transparent,
@@ -267,7 +267,7 @@ export default function Auth() {
             rgba(0,0,0,0.3) 32px
           )`
         }} />
-        <div className="hidden dark:block absolute inset-0 opacity-[0.025]" style={{
+        <div className="hidden dark:block absolute inset-0 opacity-[0.035]" style={{
           backgroundImage: `repeating-linear-gradient(
             -45deg,
             transparent,
