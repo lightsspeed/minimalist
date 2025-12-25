@@ -9,6 +9,7 @@ export interface Note {
   content: string;
   folder: string | null;
   tags: string[];
+  is_pinned: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -67,7 +68,7 @@ export function useNotes() {
     return { error: null, data };
   };
 
-  const updateNote = async (id: string, updates: { content?: string; folder?: string | null; tags?: string[] }) => {
+  const updateNote = async (id: string, updates: { content?: string; folder?: string | null; tags?: string[]; is_pinned?: boolean }) => {
     const { error } = await supabase
       .from('notes')
       .update(updates)
@@ -82,6 +83,25 @@ export function useNotes() {
     setNotes(prev => prev.map(note => 
       note.id === id ? { ...note, ...updates, updated_at: new Date().toISOString() } : note
     ));
+    return { error: null };
+  };
+
+  const togglePin = async (id: string) => {
+    const note = notes.find(n => n.id === id);
+    if (!note) return { error: new Error('Note not found') };
+
+    const { error } = await supabase
+      .from('notes')
+      .update({ is_pinned: !note.is_pinned })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating note:', error);
+      return { error };
+    }
+
+    toast({ title: note.is_pinned ? 'Note unpinned' : 'Note pinned' });
+    await fetchNotes();
     return { error: null };
   };
 
@@ -111,6 +131,7 @@ export function useNotes() {
     createNote,
     updateNote,
     deleteNote,
+    togglePin,
     refetch: fetchNotes,
   };
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Plus, Trash2, FileText, Share2, FolderOpen, Tag, X, Search } from 'lucide-react';
+import { Plus, Trash2, FileText, Share2, FolderOpen, Tag, X, Search, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,7 +32,7 @@ import {
 
 export default function Notes() {
   const { user, loading: authLoading } = useAuth();
-  const { notes, loading: notesLoading, createNote, updateNote, deleteNote } = useNotes();
+  const { notes, loading: notesLoading, createNote, updateNote, deleteNote, togglePin } = useNotes();
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [content, setContent] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -48,13 +48,22 @@ export default function Notes() {
   const folders = [...new Set(notes.map(n => n.folder).filter(Boolean))] as string[];
 
   // Filter notes by selected folder and search query
-  const filteredNotes = notes.filter(n => {
-    const matchesFolder = !selectedFolder || n.folder === selectedFolder;
-    const matchesSearch = !searchQuery || 
-      n.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (n.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesFolder && matchesSearch;
-  });
+  const filteredNotes = notes
+    .filter(n => {
+      const matchesFolder = !selectedFolder || n.folder === selectedFolder;
+      const matchesSearch = !searchQuery || 
+        n.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (n.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesFolder && matchesSearch;
+    })
+    .sort((a, b) => {
+      // Pinned first
+      if (a.is_pinned !== b.is_pinned) {
+        return a.is_pinned ? -1 : 1;
+      }
+      // Then by updated_at
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    });
 
   // Auto-select first note or newly created note
   useEffect(() => {
@@ -128,6 +137,11 @@ export default function Notes() {
       setNoteToDelete(null);
       setDeleteDialogOpen(false);
     }
+  };
+
+  const handlePinClick = (e: React.MouseEvent, noteId: string) => {
+    e.stopPropagation();
+    togglePin(noteId);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -254,9 +268,14 @@ export default function Notes() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {note.content.split('\n')[0] || 'Untitled'}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          {note.is_pinned && (
+                            <Pin className="h-3 w-3 text-primary flex-shrink-0" />
+                          )}
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {note.content.split('\n')[0] || 'Untitled'}
+                          </p>
+                        </div>
                         <div className="flex items-center gap-2 mt-1">
                           {note.folder && (
                             <span className="text-xs text-muted-foreground flex items-center gap-0.5">
@@ -280,6 +299,14 @@ export default function Notes() {
                         )}
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn('h-6 w-6', note.is_pinned ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}
+                          onClick={(e) => handlePinClick(e, note.id)}
+                        >
+                          <Pin className="h-3.5 w-3.5" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

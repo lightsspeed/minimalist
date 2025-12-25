@@ -78,14 +78,6 @@ function SubtaskItem({
     }
   };
 
-  // Calculate colors based on depth for visual hierarchy
-  const depthColors = [
-    'border-l-primary/40',
-    'border-l-accent-foreground/30',
-    'border-l-muted-foreground/20',
-  ];
-  const borderColor = depthColors[Math.min(depth, depthColors.length - 1)];
-
   return (
     <div
       ref={setNodeRef}
@@ -97,33 +89,34 @@ function SubtaskItem({
     >
       <div
         className={cn(
-          'flex items-center gap-1.5 group py-1.5 px-2 rounded-md transition-colors hover:bg-hover-blue',
-          depth > 0 && 'ml-4 border-l-2 pl-3',
-          depth > 0 && borderColor
+          'flex items-center gap-2 group py-2 px-3 rounded-lg transition-all duration-200',
+          'hover:bg-muted/50',
+          depth > 0 && 'ml-6 border-l-2 border-border/60'
         )}
       >
         {/* Expand/Collapse button */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className={cn(
-            'flex-shrink-0 w-4 h-4 flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors',
+            'flex-shrink-0 w-5 h-5 flex items-center justify-center rounded transition-colors',
+            'text-muted-foreground/60 hover:text-foreground hover:bg-muted',
             !hasChildren && 'invisible'
           )}
         >
           {isExpanded ? (
-            <ChevronDown className="h-3 w-3" />
+            <ChevronDown className="h-3.5 w-3.5" />
           ) : (
-            <ChevronRight className="h-3 w-3" />
+            <ChevronRight className="h-3.5 w-3.5" />
           )}
         </button>
 
         {/* Drag handle */}
         <button
-          className="flex-shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+          className="flex-shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground transition-colors rounded p-0.5 hover:bg-muted"
           {...attributes}
           {...listeners}
         >
-          <GripVertical className="h-3.5 w-3.5" />
+          <GripVertical className="h-4 w-4" />
         </button>
 
         {/* Checkbox */}
@@ -132,16 +125,18 @@ function SubtaskItem({
           className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors"
         >
           {subtask.is_completed ? (
-            <Check className="h-4 w-4 text-success" />
+            <div className="h-5 w-5 rounded-full bg-success flex items-center justify-center">
+              <Check className="h-3 w-3 text-success-foreground" />
+            </div>
           ) : (
-            <Circle className="h-4 w-4" />
+            <Circle className="h-5 w-5" />
           )}
         </button>
 
         {/* Title */}
         <span
           className={cn(
-            'flex-1 text-sm',
+            'flex-1 text-sm text-foreground',
             subtask.is_completed && 'line-through text-muted-foreground'
           )}
         >
@@ -149,50 +144,49 @@ function SubtaskItem({
         </span>
 
         {/* Actions */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {depth < 2 && (
             <button
               onClick={() => setIsAddingChild(true)}
-              className="p-1 text-muted-foreground hover:text-primary transition-colors rounded"
+              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-md"
               title="Add nested subtask"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-3.5 w-3.5" />
             </button>
           )}
           <button
             onClick={() => onDelete(subtask.id)}
-            className="p-1 text-muted-foreground hover:text-destructive transition-colors rounded"
+            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all rounded-md"
           >
-            <X className="h-3 w-3" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
       {/* Add child input */}
       {isAddingChild && (
-        <div className={cn('flex items-center gap-2 mt-1 mb-2', depth > 0 ? 'ml-8' : 'ml-4')}>
-          <div className="w-4" />
+        <div className={cn('flex items-center gap-2 mt-1 mb-2 pl-12', depth > 0 && 'ml-6')}>
           <Input
             value={newChildTitle}
             onChange={(e) => setNewChildTitle(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Nested subtask..."
-            className="h-7 text-xs flex-1"
+            placeholder="Add nested subtask..."
+            className="h-8 text-sm flex-1 bg-background"
             autoFocus
           />
-          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={handleAddChild}>
-            <Check className="h-3 w-3" />
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:bg-success/10 hover:text-success" onClick={handleAddChild}>
+            <Check className="h-4 w-4" />
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 w-7 p-0"
+            className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
             onClick={() => {
               setNewChildTitle('');
               setIsAddingChild(false);
             }}
           >
-            <X className="h-3 w-3" />
+            <X className="h-4 w-4" />
           </Button>
         </div>
       )}
@@ -269,23 +263,30 @@ export function SubtaskList({ taskId, onAllCompleted }: SubtaskListProps) {
   };
 
   if (loading) {
-    return <div className="text-xs text-muted-foreground py-2">Loading subtasks...</div>;
+    return <div className="text-xs text-muted-foreground py-3">Loading subtasks...</div>;
   }
 
   const completedCount = subtasks.filter(s => s.is_completed).length;
   const totalCount = subtasks.length;
+  const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   return (
-    <div className="mt-3 pt-3 border-t border-border/50">
+    <div className="mt-4 pt-4 border-t border-border/40">
+      {/* Progress header */}
       {totalCount > 0 && (
-        <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
-          <span>Subtasks: {completedCount}/{totalCount}</span>
-          <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-xs font-medium text-foreground">
+            Subtasks
+          </span>
+          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
             <div 
-              className="h-full bg-success transition-all duration-300"
-              style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
+              className="h-full bg-success rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progressPercent}%` }}
             />
           </div>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {completedCount}/{totalCount}
+          </span>
         </div>
       )}
       
@@ -311,22 +312,22 @@ export function SubtaskList({ taskId, onAllCompleted }: SubtaskListProps) {
       </DndContext>
 
       {isAdding ? (
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-3 pl-7">
           <Input
             value={newSubtask}
             onChange={(e) => setNewSubtask(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Subtask title"
-            className="h-8 text-sm"
+            placeholder="Add subtask..."
+            className="h-9 text-sm bg-background"
             autoFocus
           />
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={handleAdd}>
+          <Button size="sm" variant="ghost" className="h-9 w-9 p-0 hover:bg-success/10 hover:text-success" onClick={handleAdd}>
             <Check className="h-4 w-4" />
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 w-8 p-0"
+            className="h-9 w-9 p-0 hover:bg-destructive/10 hover:text-destructive"
             onClick={() => {
               setNewSubtask('');
               setIsAdding(false);
@@ -339,10 +340,10 @@ export function SubtaskList({ taskId, onAllCompleted }: SubtaskListProps) {
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 text-xs mt-2 text-muted-foreground hover:text-foreground gap-1"
+          className="h-9 text-sm mt-3 text-muted-foreground hover:text-foreground gap-2 hover:bg-muted/50"
           onClick={() => setIsAdding(true)}
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus className="h-4 w-4" />
           Add subtask
         </Button>
       )}

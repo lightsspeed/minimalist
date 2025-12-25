@@ -38,7 +38,7 @@ import {
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
-  const { tasks, loading: tasksLoading, addTask, updateTask, deleteTask, reorderTasks } = useTasks();
+  const { tasks, loading: tasksLoading, addTask, updateTask, deleteTask, reorderTasks, togglePin, convertToNote } = useTasks();
   
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -62,7 +62,7 @@ export default function Dashboard() {
     return Array.from(tagSet).sort();
   }, [tasks]);
 
-  // Filter and sort tasks - completed tasks go to bottom
+  // Filter and sort tasks - pinned first, then by position, completed at bottom
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
     
@@ -81,9 +81,15 @@ export default function Dashboard() {
       result = result.filter((task) => task.tags.includes(activeTag));
     }
     
-    // Sort - completed tasks always at bottom
+    // Sort - pinned first, then by completion, then by position
     result.sort((a, b) => {
-      // First, sort by completion status
+      // Pinned items first (but only among non-completed)
+      if (!a.is_completed && !b.is_completed) {
+        if (a.is_pinned !== b.is_pinned) {
+          return a.is_pinned ? -1 : 1;
+        }
+      }
+      // Completed tasks always at bottom
       if (a.is_completed !== b.is_completed) {
         return a.is_completed ? 1 : -1;
       }
@@ -188,6 +194,14 @@ export default function Dashboard() {
     await updateTask(id, { is_completed: completed });
   };
 
+  const handleTogglePin = async (id: string) => {
+    await togglePin(id);
+  };
+
+  const handleConvertToNote = async (task: Task) => {
+    await convertToNote(task);
+  };
+
   const handleTagClick = (tag: string) => {
     setActiveTag(activeTag === tag ? null : tag);
   };
@@ -277,6 +291,8 @@ export default function Dashboard() {
                     onDelete={handleDeleteClick}
                     onShare={handleShareClick}
                     onToggleComplete={handleToggleComplete}
+                    onTogglePin={handleTogglePin}
+                    onConvertToNote={handleConvertToNote}
                     onTagClick={handleTagClick}
                   />
                 ))}
