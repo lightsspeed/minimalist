@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ListTodo, CircleCheck, Clock, CalendarDays, Tag, BarChart3, Layers } from 'lucide-react';
+import { ListTodo, CircleCheck, Clock, CalendarDays, Tag, BarChart3, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,7 +8,7 @@ import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
-import { subDays, subMonths, isAfter, format, startOfWeek, startOfMonth } from 'date-fns';
+import { subDays, subMonths, isAfter, format, startOfWeek, startOfMonth, getMonth, getYear } from 'date-fns';
 
 type TimePeriod = 'day' | 'week' | 'month' | 'year';
 
@@ -17,6 +17,15 @@ interface Subtask {
   task_id: string;
   is_completed: boolean;
   created_at: string;
+}
+
+interface MonthData {
+  month: string;
+  year: number;
+  label: string;
+  total: number;
+  completed: number;
+  pending: number;
 }
 
 export default function Analytics() {
@@ -62,11 +71,11 @@ export default function Analytics() {
 
   const stats = useMemo(() => {
     // Combine tasks and subtasks
-    const totalTasks = tasks.length;
+    const totalTasks = tasks.filter(t => !t.is_template).length;
     const totalSubtasks = subtasks.length;
     const total = totalTasks + totalSubtasks;
 
-    const completedTasks = tasks.filter(t => t.is_completed).length;
+    const completedTasks = tasks.filter(t => t.is_completed && !t.is_template).length;
     const completedSubtasks = subtasks.filter(s => s.is_completed).length;
     const completed = completedTasks + completedSubtasks;
 
@@ -75,7 +84,7 @@ export default function Analytics() {
 
     // Items created in last 7 days (tasks + subtasks)
     const last7DaysTasks = tasks.filter(t => 
-      isAfter(new Date(t.created_at), subDays(new Date(), 7))
+      !t.is_template && isAfter(new Date(t.created_at), subDays(new Date(), 7))
     ).length;
     const last7DaysSubtasks = subtasks.filter(s => 
       isAfter(new Date(s.created_at), subDays(new Date(), 7))
@@ -84,7 +93,7 @@ export default function Analytics() {
 
     // Tag distribution (from tasks only)
     const tagCounts: Record<string, number> = {};
-    tasks.forEach(task => {
+    tasks.filter(t => !t.is_template).forEach(task => {
       task.tags.forEach(tag => {
         tagCounts[tag] = (tagCounts[tag] || 0) + 1;
       });
@@ -107,12 +116,81 @@ export default function Analytics() {
     };
   }, [tasks, subtasks]);
 
+  // Monthly data - auto-generated from tasks
+  const monthlyData = useMemo(() => {
+    const monthMap = new Map<string, MonthData>();
+    
+    // Process tasks (excluding templates)
+    tasks.filter(t => !t.is_template).forEach(task => {
+      const date = new Date(task.created_at);
+      const month = getMonth(date);
+      const year = getYear(date);
+      const key = `${year}-${month}`;
+      const label = format(date, 'MMMM yyyy');
+      
+      if (!monthMap.has(key)) {
+        monthMap.set(key, {
+          month: format(date, 'MMMM'),
+          year,
+          label,
+          total: 0,
+          completed: 0,
+          pending: 0,
+        });
+      }
+      
+      const data = monthMap.get(key)!;
+      data.total += 1;
+      if (task.is_completed) {
+        data.completed += 1;
+      } else {
+        data.pending += 1;
+      }
+    });
+    
+    // Process subtasks
+    subtasks.forEach(subtask => {
+      const date = new Date(subtask.created_at);
+      const month = getMonth(date);
+      const year = getYear(date);
+      const key = `${year}-${month}`;
+      const label = format(date, 'MMMM yyyy');
+      
+      if (!monthMap.has(key)) {
+        monthMap.set(key, {
+          month: format(date, 'MMMM'),
+          year,
+          label,
+          total: 0,
+          completed: 0,
+          pending: 0,
+        });
+      }
+      
+      const data = monthMap.get(key)!;
+      data.total += 1;
+      if (subtask.is_completed) {
+        data.completed += 1;
+      } else {
+        data.pending += 1;
+      }
+    });
+    
+    // Sort by year and month (newest first)
+    return Array.from(monthMap.values()).sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      const monthOrder = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+      return monthOrder.indexOf(b.month) - monthOrder.indexOf(a.month);
+    });
+  }, [tasks, subtasks]);
+
   const chartData = useMemo(() => {
     const now = new Date();
     
-    // Combine tasks and subtasks for chart
+    // Combine tasks and subtasks for chart (excluding templates)
     const allItems = [
-      ...tasks.map(t => ({ created_at: t.created_at })),
+      ...tasks.filter(t => !t.is_template).map(t => ({ created_at: t.created_at })),
       ...subtasks.map(s => ({ created_at: s.created_at }))
     ];
     
@@ -284,6 +362,46 @@ export default function Analytics() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Monthly Breakdown */}
+            {monthlyData.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-medium flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Monthly Breakdown
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {monthlyData.map((month) => {
+                      const completionRate = month.total > 0 ? Math.round((month.completed / month.total) * 100) : 0;
+                      return (
+                        <div key={month.label} className="p-3 bg-muted/30 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium text-foreground">{month.label}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {month.completed}/{month.total} completed
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1">
+                              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-success rounded-full transition-all duration-500"
+                                  style={{ width: `${completionRate}%` }}
+                                />
+                              </div>
+                            </div>
+                            <span className="text-sm font-medium w-12 text-right">{completionRate}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Tasks Chart with Time Period Tabs */}
             <Card>

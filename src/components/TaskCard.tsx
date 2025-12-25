@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pencil, Trash2, Share2, Check, Circle, ChevronDown, ChevronUp, GripVertical, Pin, FileText, Calendar } from 'lucide-react';
+import { Pencil, Trash2, Share2, Check, Circle, ChevronDown, ChevronUp, GripVertical, Pin, FileText, Calendar, MoreHorizontal, Copy } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
@@ -10,11 +10,12 @@ import { Task } from '@/hooks/useTasks';
 import { cn } from '@/lib/utils';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface TaskCardProps {
   task: Task;
@@ -24,6 +25,7 @@ interface TaskCardProps {
   onToggleComplete: (id: string, completed: boolean) => void;
   onTogglePin: (id: string) => void;
   onConvertToNote: (task: Task) => void;
+  onSaveAsTemplate?: (task: Task) => void;
   onTagClick?: (tag: string) => void;
 }
 
@@ -35,6 +37,7 @@ export function TaskCard({
   onToggleComplete,
   onTogglePin,
   onConvertToNote,
+  onSaveAsTemplate,
   onTagClick 
 }: TaskCardProps) {
   const [isHovered, setIsHovered] = useState(false);
@@ -83,6 +86,7 @@ export function TaskCard({
         'transition-all duration-200 hover:shadow-md hover:bg-hover-blue animate-fade-in',
         task.is_completed && 'opacity-60',
         task.is_pinned && 'border-primary/30 bg-primary/[0.02]',
+        task.is_template && 'border-accent-foreground/30 bg-accent/20',
         isDragging && 'opacity-50 shadow-lg'
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -113,6 +117,9 @@ export function TaskCard({
                 {task.is_pinned && (
                   <Pin className="h-3.5 w-3.5 text-primary flex-shrink-0" />
                 )}
+                {task.is_template && (
+                  <Copy className="h-3.5 w-3.5 text-accent-foreground flex-shrink-0" />
+                )}
                 <h3 className={cn(
                   'font-semibold text-foreground truncate',
                   task.is_completed && 'line-through text-muted-foreground'
@@ -133,99 +140,62 @@ export function TaskCard({
               </div>
             </div>
           </div>
+          
+          {/* Action buttons - show expand and dropdown on hover */}
           <div className={cn(
-            'flex gap-0.5 transition-opacity duration-200',
+            'flex items-center gap-0.5 transition-opacity duration-200',
             isHovered ? 'opacity-100' : 'opacity-0 sm:opacity-100'
           )}>
-            <TooltipProvider delayDuration={300}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setShowSubtasks(!showSubtasks)}
-                  >
-                    {showSubtasks ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Subtasks</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn('h-8 w-8', task.is_pinned && 'text-primary')}
-                    onClick={() => onTogglePin(task.id)}
-                  >
-                    <Pin className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{task.is_pinned ? 'Unpin' : 'Pin'}</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => onEdit(task)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Edit</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => onConvertToNote(task)}
-                  >
-                    <FileText className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Convert to Note</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-primary hover:text-primary"
-                    onClick={() => onShare(task)}
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Share</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => onDelete(task.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Delete</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setShowSubtasks(!showSubtasks)}
+            >
+              {showSubtasks ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => onTogglePin(task.id)}>
+                  <Pin className={cn('h-4 w-4 mr-2', task.is_pinned && 'text-primary')} />
+                  {task.is_pinned ? 'Unpin' : 'Pin'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onEdit(task)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onConvertToNote(task)}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Convert to Note
+                </DropdownMenuItem>
+                {onSaveAsTemplate && (
+                  <DropdownMenuItem onClick={() => onSaveAsTemplate(task)}>
+                    <Copy className="h-4 w-4 mr-2" />
+                    {task.is_template ? 'Remove Template' : 'Save as Template'}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => onShare(task)}>
+                  <Share2 className="h-4 w-4 mr-2 text-primary" />
+                  Share
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => onDelete(task.id)} className="text-destructive focus:text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </CardHeader>

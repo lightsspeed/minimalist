@@ -38,7 +38,7 @@ import {
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
-  const { tasks, loading: tasksLoading, addTask, updateTask, deleteTask, reorderTasks, togglePin, convertToNote } = useTasks();
+  const { tasks, loading: tasksLoading, addTask, updateTask, deleteTask, reorderTasks, togglePin, toggleTemplate, convertToNote } = useTasks();
   
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -62,9 +62,9 @@ export default function Dashboard() {
     return Array.from(tagSet).sort();
   }, [tasks]);
 
-  // Filter and sort tasks - pinned first, then by position, completed at bottom
+  // Filter and sort tasks - pinned first, then by position, completed at bottom, exclude templates
   const filteredTasks = useMemo(() => {
-    let result = [...tasks];
+    let result = tasks.filter(t => !t.is_template); // Exclude templates from main view
     
     // Filter by search query
     if (searchQuery) {
@@ -202,6 +202,10 @@ export default function Dashboard() {
     await convertToNote(task);
   };
 
+  const handleSaveAsTemplate = async (task: Task) => {
+    await toggleTemplate(task.id);
+  };
+
   const handleTagClick = (tag: string) => {
     setActiveTag(activeTag === tag ? null : tag);
   };
@@ -293,6 +297,7 @@ export default function Dashboard() {
                     onToggleComplete={handleToggleComplete}
                     onTogglePin={handleTogglePin}
                     onConvertToNote={handleConvertToNote}
+                    onSaveAsTemplate={handleSaveAsTemplate}
                     onTagClick={handleTagClick}
                   />
                 ))}
