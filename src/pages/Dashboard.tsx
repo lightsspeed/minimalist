@@ -22,7 +22,6 @@ import { TaskCard } from '@/components/TaskCard';
 import { TaskModal } from '@/components/TaskModal';
 import { ShareModal } from '@/components/ShareModal';
 import { SearchBar } from '@/components/SearchBar';
-import { SortSelect, SortOption } from '@/components/SortSelect';
 import { TagBadge } from '@/components/TagBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks, Task } from '@/hooks/useTasks';
@@ -49,7 +48,6 @@ export default function Dashboard() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortOption, setSortOption] = useState<SortOption>('newest');
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -94,7 +92,7 @@ export default function Dashboard() {
     });
     
     return result;
-  }, [tasks, searchQuery, sortOption, activeTag]);
+  }, [tasks, searchQuery, activeTag]);
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -201,13 +199,10 @@ export default function Dashboard() {
           <div className="flex-1">
             <SearchBar value={searchQuery} onChange={setSearchQuery} />
           </div>
-          <div className="flex gap-2">
-            <SortSelect value={sortOption} onChange={setSortOption} />
-            <Button onClick={handleAddClick} className="gap-2">
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Add Task</span>
-            </Button>
-          </div>
+          <Button onClick={handleAddClick} className="gap-2">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Add Task</span>
+          </Button>
         </div>
 
         {/* Tag Filters */}
