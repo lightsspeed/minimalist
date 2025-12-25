@@ -1,16 +1,20 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { CheckCircle2, Circle, Tag, Calendar, TrendingUp } from 'lucide-react';
+import { ListTodo, CircleCheck, Clock, CalendarDays, Tag, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/hooks/useTasks';
-import { subDays, isAfter, format } from 'date-fns';
+import { subDays, subMonths, subYears, isAfter, format, startOfWeek, startOfMonth, startOfYear, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns';
+
+type TimePeriod = 'day' | 'week' | 'month' | 'year';
 
 export default function Analytics() {
   const { user, loading: authLoading } = useAuth();
   const { tasks, loading: tasksLoading } = useTasks();
+  const [period, setPeriod] = useState<TimePeriod>('week');
 
   const stats = useMemo(() => {
     const total = tasks.length;
@@ -34,19 +38,80 @@ export default function Analytics() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
-    // Tasks by day (last 7 days)
-    const tasksByDay: { date: string; count: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = subDays(new Date(), i);
-      const dateStr = format(date, 'yyyy-MM-dd');
-      const count = tasks.filter(t => 
-        format(new Date(t.created_at), 'yyyy-MM-dd') === dateStr
-      ).length;
-      tasksByDay.push({ date: format(date, 'EEE'), count });
-    }
-
-    return { total, completed, pending, completionRate, last7Days, topTags, tasksByDay };
+    return { total, completed, pending, completionRate, last7Days, topTags };
   }, [tasks]);
+
+  const chartData = useMemo(() => {
+    const now = new Date();
+    
+    switch (period) {
+      case 'day': {
+        // Last 24 hours, grouped by hour (show last 12 hours)
+        const data: { label: string; count: number }[] = [];
+        for (let i = 11; i >= 0; i--) {
+          const hour = new Date(now);
+          hour.setHours(now.getHours() - i, 0, 0, 0);
+          const nextHour = new Date(hour);
+          nextHour.setHours(hour.getHours() + 1);
+          
+          const count = tasks.filter(t => {
+            const created = new Date(t.created_at);
+            return created >= hour && created < nextHour;
+          }).length;
+          
+          data.push({ label: format(hour, 'ha'), count });
+        }
+        return data;
+      }
+      case 'week': {
+        // Last 7 days
+        const data: { label: string; count: number }[] = [];
+        for (let i = 6; i >= 0; i--) {
+          const date = subDays(now, i);
+          const dateStr = format(date, 'yyyy-MM-dd');
+          const count = tasks.filter(t => 
+            format(new Date(t.created_at), 'yyyy-MM-dd') === dateStr
+          ).length;
+          data.push({ label: format(date, 'EEE'), count });
+        }
+        return data;
+      }
+      case 'month': {
+        // Last 4 weeks
+        const data: { label: string; count: number }[] = [];
+        for (let i = 3; i >= 0; i--) {
+          const weekStart = startOfWeek(subDays(now, i * 7));
+          const weekEnd = subDays(startOfWeek(subDays(now, (i - 1) * 7)), 1);
+          
+          const count = tasks.filter(t => {
+            const created = new Date(t.created_at);
+            return created >= weekStart && created <= (i === 0 ? now : weekEnd);
+          }).length;
+          
+          data.push({ label: `Week ${4 - i}`, count });
+        }
+        return data;
+      }
+      case 'year': {
+        // Last 12 months
+        const data: { label: string; count: number }[] = [];
+        for (let i = 11; i >= 0; i--) {
+          const monthStart = startOfMonth(subMonths(now, i));
+          const monthEnd = i === 0 ? now : subDays(startOfMonth(subMonths(now, i - 1)), 1);
+          
+          const count = tasks.filter(t => {
+            const created = new Date(t.created_at);
+            return created >= monthStart && created <= monthEnd;
+          }).length;
+          
+          data.push({ label: format(monthStart, 'MMM'), count });
+        }
+        return data;
+      }
+    }
+  }, [tasks, period]);
+
+  const maxCount = Math.max(...chartData.map(d => d.count), 1);
 
   if (authLoading) {
     return (
@@ -60,8 +125,6 @@ export default function Analytics() {
     return <Navigate to="/auth" replace />;
   }
 
-  const maxDayCount = Math.max(...stats.tasksByDay.map(d => d.count), 1);
-
   return (
     <div className="min-h-screen bg-background transition-theme">
       <NavBar />
@@ -73,11 +136,11 @@ export default function Analytics() {
           <div className="space-y-6">
             {/* Overview Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card>
+              <Card className="hover:bg-hover-blue transition-colors">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <TrendingUp className="h-5 w-5 text-primary" />
+                    <div className="p-2.5 bg-primary/10 rounded-xl">
+                      <ListTodo className="h-5 w-5 text-primary" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{stats.total}</p>
@@ -87,11 +150,11 @@ export default function Analytics() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="hover:bg-hover-blue transition-colors">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-success/10 rounded-lg">
-                      <CheckCircle2 className="h-5 w-5 text-success" />
+                    <div className="p-2.5 bg-success/10 rounded-xl">
+                      <CircleCheck className="h-5 w-5 text-success" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{stats.completed}</p>
@@ -101,11 +164,11 @@ export default function Analytics() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="hover:bg-hover-blue transition-colors">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-muted rounded-lg">
-                      <Circle className="h-5 w-5 text-muted-foreground" />
+                    <div className="p-2.5 bg-accent rounded-xl">
+                      <Clock className="h-5 w-5 text-accent-foreground" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{stats.pending}</p>
@@ -115,11 +178,11 @@ export default function Analytics() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="hover:bg-hover-blue transition-colors">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <Calendar className="h-5 w-5 text-primary" />
+                    <div className="p-2.5 bg-primary/10 rounded-xl">
+                      <CalendarDays className="h-5 w-5 text-primary" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{stats.last7Days}</p>
@@ -146,28 +209,38 @@ export default function Analytics() {
               </CardContent>
             </Card>
 
-            {/* Tasks by Day */}
+            {/* Tasks Chart with Time Period Tabs */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base font-medium">Tasks Created (Last 7 Days)</CardTitle>
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <CardTitle className="text-base font-medium flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Tasks Created
+                  </CardTitle>
+                  <Tabs value={period} onValueChange={(v) => setPeriod(v as TimePeriod)}>
+                    <TabsList className="h-8">
+                      <TabsTrigger value="day" className="text-xs px-3 h-6">Day</TabsTrigger>
+                      <TabsTrigger value="week" className="text-xs px-3 h-6">Week</TabsTrigger>
+                      <TabsTrigger value="month" className="text-xs px-3 h-6">Month</TabsTrigger>
+                      <TabsTrigger value="year" className="text-xs px-3 h-6">Year</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-end justify-between gap-2 h-24">
-                  {stats.tasksByDay.map((day, i) => (
+                <div className="flex items-end justify-between gap-1 h-32">
+                  {chartData.map((item, i) => (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <span className="text-xs text-muted-foreground mb-1">{item.count > 0 ? item.count : ''}</span>
                       <div
-                        className="w-full bg-primary/20 rounded-t transition-all"
+                        className="w-full bg-primary rounded-t transition-all hover:bg-primary/80"
                         style={{
-                          height: `${(day.count / maxDayCount) * 100}%`,
-                          minHeight: day.count > 0 ? '4px' : '0px',
+                          height: `${(item.count / maxCount) * 80}px`,
+                          minHeight: item.count > 0 ? '8px' : '2px',
+                          opacity: item.count > 0 ? 1 : 0.3,
                         }}
-                      >
-                        <div
-                          className="w-full h-full bg-primary rounded-t"
-                          style={{ opacity: 0.3 + (day.count / maxDayCount) * 0.7 }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground">{day.date}</span>
+                      />
+                      <span className="text-xs text-muted-foreground mt-1">{item.label}</span>
                     </div>
                   ))}
                 </div>
