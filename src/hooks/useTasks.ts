@@ -68,15 +68,25 @@ export function useTasks() {
       }
     }
 
-    // Get max position
-    const maxPosition = tasks.length > 0 ? Math.max(...tasks.map(t => t.position || 0)) + 1 : 0;
+    // Shift all existing non-pinned tasks' positions by 1 to make room at the top
+    const nonPinnedTasks = tasks.filter(t => !t.is_pinned && !t.is_completed);
+    if (nonPinnedTasks.length > 0) {
+      const updates = nonPinnedTasks.map(t => ({
+        id: t.id,
+        position: (t.position || 0) + 1,
+      }));
+      
+      for (const update of updates) {
+        await supabase.from('tasks').update({ position: update.position }).eq('id', update.id);
+      }
+    }
 
     const { error } = await supabase.from('tasks').insert({
       user_id: user.id,
       title: finalTitle,
       description: description || null,
       tags,
-      position: maxPosition,
+      position: 0, // New task at top
       due_date: finalDueDate ? finalDueDate.toISOString() : null,
     });
 
