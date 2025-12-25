@@ -169,15 +169,12 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background transition-theme overflow-hidden relative">
-      {/* Full-page flowing gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[hsl(225,73%,57%)] via-[hsl(225,73%,57%)] via-55% to-transparent dark:to-[hsl(225,25%,8%)] to-[hsl(0,0%,98%)]" />
-      <div className="absolute inset-0 bg-gradient-to-br from-[hsl(225,90%,65%)]/80 via-transparent to-transparent" />
-      
+    <div className="min-h-screen flex bg-background transition-theme overflow-hidden">
       {/* Left side - Feature showcase */}
       <div className="hidden lg:flex lg:w-[55%] relative">
-        {/* Additional blue depth */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(225,90%,65%)] via-[hsl(225,73%,57%)] to-[hsl(225,80%,50%)]" />
+        {/* Pure royal blue gradient background */}
+        <div className="absolute inset-0 bg-[hsl(225,73%,57%)]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(225,90%,65%)] via-[hsl(225,73%,57%)] to-[hsl(225,80%,45%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/25 via-transparent to-transparent" />
         
         {/* Animated floating shapes */}
@@ -191,18 +188,64 @@ export default function Auth() {
           backgroundSize: '50px 50px'
         }} />
 
-        {/* Flowing gradient edge */}
-        <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-r from-transparent to-[hsl(225,73%,57%)]/50" />
+        <div className="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full text-white">
+          {/* Header */}
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl">
+                <img src={logo} alt="Minimalist" className="h-8 w-auto brightness-0 invert" />
+              </div>
+              <span className="text-2xl font-bold">Minimalist</span>
+            </div>
+            <p className="text-white/70 text-sm">Task & Notes</p>
+          </div>
+
+          {/* Main content */}
+          <div className="py-8">
+            <h2 className="text-4xl xl:text-5xl font-bold mb-4 leading-tight">
+              Organize your life,<br />
+              <span className="text-white/90">beautifully.</span>
+            </h2>
+            <p className="text-lg text-white/70 mb-10 max-w-md">
+              The minimalist productivity app that helps you focus on what matters most.
+            </p>
+
+            {/* Feature cards */}
+            <div className="grid grid-cols-2 gap-4">
+              {features.map((feature, index) => (
+                <div
+                  key={feature.title}
+                  className="group p-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:bg-white/20 hover:border-white/20 transition-all duration-300 animate-fade-in"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <feature.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-semibold text-sm mb-1">{feature.title}</h3>
+                  <p className="text-xs text-white/60 leading-relaxed">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer highlights */}
+          <div className="flex items-center gap-6">
+            {highlights.map((item, index) => (
+              <div key={index} className="flex items-center gap-2 text-sm text-white/70">
+                <item.icon className="h-4 w-4" />
+                <span>{item.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Right side - Auth form */}
       <div className="flex-1 flex flex-col relative">
-        {/* Flowing blue gradient from left */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[hsl(225,73%,65%)]/40 via-[hsl(225,73%,60%)]/20 to-transparent dark:from-[hsl(225,73%,50%)]/30 dark:via-[hsl(225,73%,45%)]/15" />
-        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(225,73%,60%)]/20 via-transparent to-background/80" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[hsl(225,73%,60%)]/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[hsl(225,73%,60%)]/15 rounded-full blur-3xl translate-y-1/3" />
-        <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-[hsl(225,73%,70%)]/10 rounded-full blur-2xl" />
+        {/* Subtle background pattern for form side */}
+        <div className="absolute inset-0 bg-gradient-to-br from-muted/30 via-background to-muted/20" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
         {/* Theme toggle */}
         <header className="absolute top-4 right-4 z-20">
