@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Check, QrCode, Lock, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Copy, Check, QrCode, Lock, Eye, EyeOff, RefreshCw, CheckCircle, Share2, Download } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -29,7 +29,7 @@ export function NoteShareModal({ open, onOpenChange, note }: NoteShareModalProps
   const [shareLink, setShareLink] = useState('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [step, setStep] = useState<'options' | 'share'>('options');
+  const [step, setStep] = useState<'options' | 'success'>('options');
   const [expiration, setExpiration] = useState<ExpirationOption>('1day');
   const [deleteAfterReading, setDeleteAfterReading] = useState(false);
 
@@ -103,9 +103,9 @@ export function NoteShareModal({ open, onOpenChange, note }: NoteShareModalProps
 
       const link = `${window.location.origin}/shared-note/${shareToken}`;
       setShareLink(link);
-      setStep('share');
+      setStep('success');
       
-      toast({ title: 'Share link created!' });
+      toast({ title: 'Note shared successfully!' });
     } catch (error: any) {
       toast({
         title: 'Error creating share link',
@@ -155,137 +155,194 @@ export function NoteShareModal({ open, onOpenChange, note }: NoteShareModalProps
     { value: '1month', label: '1 month' },
   ];
 
+  const exportQRCode = () => {
+    const link = document.createElement('a');
+    link.href = qrCodeUrl;
+    link.download = 'note-qr-code.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: 'QR code downloaded!' });
+  };
+
+  const shareNative = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Shared Note',
+          text: 'Check out this note I shared with you!',
+          url: shareLink,
+        });
+      } catch (err) {
+        // User cancelled or error
+      }
+    } else {
+      copyToClipboard();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Lock className="h-5 w-5 text-primary" />
-            Share Note
-          </DialogTitle>
-          <DialogDescription>
-            {step === 'options' 
-              ? 'Set options to share this note securely.'
-              : 'Share this link with anyone. They\'ll need the password you set to view the note.'
-            }
-          </DialogDescription>
-        </DialogHeader>
-
+      <DialogContent className="sm:max-w-lg">
         {step === 'options' ? (
-          <div className="space-y-5">
-            {/* Password */}
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-primary">Note password</Label>
-              <div className="relative flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Password..."
-                    autoFocus
-                  />
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-primary" />
+                Share Note
+              </DialogTitle>
+              <DialogDescription>
+                Set options to share this note securely.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-5">
+              {/* Password */}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-primary">Note password</Label>
+                <div className="relative flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Password..."
+                      autoFocus
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={generatePassword}
+                    title="Generate password"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <RefreshCw className="h-4 w-4" />
                   </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={generatePassword}
-                  title="Generate password"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
               </div>
-            </div>
 
-            {/* Expiration */}
-            <div className="space-y-2">
-              <Label className="text-primary">Expiration delay</Label>
-              <div className="flex gap-2">
-                {expirationOptions.map((opt) => (
-                  <Button
-                    key={opt.value}
-                    type="button"
-                    variant={expiration === opt.value ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setExpiration(opt.value)}
-                    className="flex-1"
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
+              {/* Expiration */}
+              <div className="space-y-2">
+                <Label className="text-primary">Expiration delay</Label>
+                <div className="flex gap-2">
+                  {expirationOptions.map((opt) => (
+                    <Button
+                      key={opt.value}
+                      type="button"
+                      variant={expiration === opt.value ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setExpiration(opt.value)}
+                      className="flex-1"
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Delete after reading */}
-            <div className="space-y-2">
-              <Label className="text-primary">Delete after reading</Label>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  Delete the note after reading
-                </span>
-                <Switch
-                  checked={deleteAfterReading}
-                  onCheckedChange={setDeleteAfterReading}
-                />
+              {/* Delete after reading */}
+              <div className="space-y-2">
+                <Label className="text-primary">Delete after reading</Label>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Delete the note after reading
+                  </span>
+                  <Switch
+                    checked={deleteAfterReading}
+                    onCheckedChange={setDeleteAfterReading}
+                  />
+                </div>
               </div>
-            </div>
 
-            <Button onClick={generateShareLink} disabled={loading} className="w-full">
-              {loading ? 'Creating...' : '+ Create note'}
-            </Button>
-          </div>
+              <Button onClick={generateShareLink} disabled={loading} className="w-full">
+                {loading ? 'Creating...' : '+ Create note'}
+              </Button>
+            </div>
+          </>
         ) : (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Share Link</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={shareLink}
-                  readOnly
-                  className="text-sm"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={copyToClipboard}
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4 text-success" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
+          <div className="text-center space-y-6 py-4">
+            {/* Success Icon */}
+            <div className="flex justify-center">
+              <div className="w-14 h-14 rounded-full border-2 border-foreground flex items-center justify-center">
+                <Check className="h-7 w-7 text-foreground" />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <QrCode className="h-4 w-4" />
-                QR Code
-              </Label>
-              <div className="flex justify-center p-4 bg-white rounded-lg">
-                <img
-                  src={qrCodeUrl}
-                  alt="QR Code for share link"
-                  className="w-48 h-48"
-                />
-              </div>
+            {/* Success Message */}
+            <div>
+              <h2 className="text-xl font-semibold mb-1">Note created successfully</h2>
+              <p className="text-sm text-muted-foreground">
+                Your note has been created. You can now share it using the following link.
+              </p>
             </div>
 
-            <div className="flex justify-end">
-              <Button onClick={handleClose}>Done</Button>
+            {/* Share Link */}
+            <div className="bg-muted rounded-lg p-3 text-sm text-muted-foreground break-all text-left">
+              {shareLink}
             </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 justify-center">
+              <Button
+                variant="outline"
+                onClick={copyToClipboard}
+                className="gap-2 border-foreground text-foreground hover:bg-foreground hover:text-background"
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                Copy link
+              </Button>
+              <Button
+                variant="outline"
+                onClick={shareNative}
+                className="gap-2 border-foreground text-foreground hover:bg-foreground hover:text-background"
+              >
+                <Share2 className="h-4 w-4" />
+                Share note
+              </Button>
+            </div>
+
+            {/* QR Code Section */}
+            <div className="border rounded-lg p-4 space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="bg-white p-2 rounded">
+                  <img
+                    src={qrCodeUrl}
+                    alt="QR Code"
+                    className="w-24 h-24"
+                  />
+                </div>
+                <div className="text-left flex-1">
+                  <h3 className="font-medium mb-1">Share this note on mobile</h3>
+                  <p className="text-sm text-muted-foreground">
+                    You can scan this QR code to view the note on your mobile device. You can also export the QR code image to share it with others.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={exportQRCode}
+                className="gap-2 border-foreground text-foreground hover:bg-foreground hover:text-background"
+              >
+                <Download className="h-4 w-4" />
+                Export QR code
+              </Button>
+            </div>
+
+            {/* Done Button */}
+            <Button onClick={handleClose} className="w-full">
+              Done
+            </Button>
           </div>
         )}
       </DialogContent>
