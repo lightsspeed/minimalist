@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { Mail, Lock, ArrowLeft, CheckCircle2, ListTodo, FileText, BarChart3, Share2, Sparkles } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, ListTodo, FileText, BarChart3, Share2, CheckCircle2, Zap, Shield, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -17,24 +17,30 @@ type AuthMode = 'login' | 'signup' | 'forgot' | 'reset';
 const features = [
   {
     icon: ListTodo,
-    title: 'Tasks & Subtasks',
-    description: 'Organize with nested subtasks up to 3 levels deep',
+    title: 'Smart Task Management',
+    description: 'Nested subtasks up to 3 levels with drag & drop',
   },
   {
     icon: FileText,
-    title: 'Personal Notes',
-    description: 'Capture ideas with tags and folders',
-  },
-  {
-    icon: Share2,
-    title: 'Secure Sharing',
-    description: 'Share notes with password protection',
+    title: 'Beautiful Notes',
+    description: 'Organize with tags, folders & secure sharing',
   },
   {
     icon: BarChart3,
-    title: 'Analytics',
-    description: 'Track your productivity over time',
+    title: 'Insightful Analytics',
+    description: 'Track productivity with visual charts',
   },
+  {
+    icon: Share2,
+    title: 'Password Protected Sharing',
+    description: 'Share notes securely with expiration',
+  },
+];
+
+const highlights = [
+  { icon: Zap, text: 'Lightning fast' },
+  { icon: Shield, text: 'Secure by design' },
+  { icon: Clock, text: 'Real-time sync' },
 ];
 
 export default function Auth() {
@@ -47,7 +53,6 @@ export default function Auth() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; confirmPassword?: string }>({});
 
-  // Check if we're in password reset mode (redirected from email)
   useEffect(() => {
     if (searchParams.get('reset') === 'true') {
       setMode('reset');
@@ -62,7 +67,6 @@ export default function Auth() {
     );
   }
 
-  // Only redirect if not in reset mode
   if (user && mode !== 'reset') {
     return <Navigate to="/" replace />;
   }
@@ -100,66 +104,35 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
-    
     setIsSubmitting(true);
 
     try {
       if (mode === 'forgot') {
         const { error } = await resetPassword(email);
         if (error) {
-          toast({
-            title: 'Error',
-            description: error.message,
-            variant: 'destructive',
-          });
+          toast({ title: 'Error', description: error.message, variant: 'destructive' });
         } else {
-          toast({
-            title: 'Check your email',
-            description: 'We sent you a password reset link.',
-          });
+          toast({ title: 'Check your email', description: 'We sent you a password reset link.' });
           setMode('login');
         }
       } else if (mode === 'reset') {
         const { error } = await updatePassword(password);
         if (error) {
-          toast({
-            title: 'Error',
-            description: error.message,
-            variant: 'destructive',
-          });
+          toast({ title: 'Error', description: error.message, variant: 'destructive' });
         } else {
-          toast({
-            title: 'Password updated',
-            description: 'Your password has been reset successfully.',
-          });
+          toast({ title: 'Password updated', description: 'Your password has been reset successfully.' });
           setMode('login');
         }
       } else {
-        const { error } = mode === 'login' 
-          ? await signIn(email, password)
-          : await signUp(email, password);
-
+        const { error } = mode === 'login' ? await signIn(email, password) : await signUp(email, password);
         if (error) {
           let message = error.message;
-          
-          if (error.message.includes('Invalid login credentials')) {
-            message = 'Invalid email or password';
-          } else if (error.message.includes('User already registered')) {
-            message = 'An account with this email already exists. Please sign in.';
-          }
-          
-          toast({
-            title: mode === 'login' ? 'Sign in failed' : 'Sign up failed',
-            description: message,
-            variant: 'destructive',
-          });
+          if (error.message.includes('Invalid login credentials')) message = 'Invalid email or password';
+          else if (error.message.includes('User already registered')) message = 'An account with this email already exists.';
+          toast({ title: mode === 'login' ? 'Sign in failed' : 'Sign up failed', description: message, variant: 'destructive' });
         } else if (mode === 'signup') {
-          toast({
-            title: 'Account created!',
-            description: 'You are now signed in.',
-          });
+          toast({ title: 'Account created!', description: 'You are now signed in.' });
         }
       }
     } finally {
@@ -170,7 +143,7 @@ export default function Auth() {
   const getTitle = () => {
     switch (mode) {
       case 'login': return 'Welcome back';
-      case 'signup': return 'Create account';
+      case 'signup': return 'Get started free';
       case 'forgot': return 'Reset password';
       case 'reset': return 'New password';
     }
@@ -178,8 +151,8 @@ export default function Auth() {
 
   const getSubtitle = () => {
     switch (mode) {
-      case 'login': return 'Sign in to continue';
-      case 'signup': return 'Get started for free';
+      case 'login': return 'Sign in to your account';
+      case 'signup': return 'Create your account in seconds';
       case 'forgot': return 'Enter your email to reset';
       case 'reset': return 'Choose a new password';
     }
@@ -196,68 +169,90 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background transition-theme">
-      {/* Left side - Feature showcase (hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary/5 relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/5" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-primary/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+    <div className="min-h-screen flex bg-background transition-theme overflow-hidden">
+      {/* Left side - Feature showcase */}
+      <div className="hidden lg:flex lg:w-[55%] relative">
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/80 to-primary/60" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/20 via-transparent to-transparent" />
         
-        <div className="relative z-10 flex flex-col justify-center p-12 xl:p-16 w-full">
-          {/* Logo & Branding */}
-          <div className="mb-12">
-            <div className="flex items-center gap-3 mb-4">
-              <img 
-                src={logo} 
-                alt="Minimalist" 
-                className="h-10 w-auto dark:brightness-0 dark:invert"
-              />
-              <span className="text-2xl font-semibold text-foreground">Minimalist</span>
+        {/* Animated floating shapes */}
+        <div className="absolute top-20 left-20 w-32 h-32 bg-white/10 rounded-full blur-xl animate-pulse" />
+        <div className="absolute bottom-32 right-20 w-48 h-48 bg-white/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-white/5 rounded-full blur-lg animate-pulse" style={{ animationDelay: '2s' }} />
+        
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 opacity-10" style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+          backgroundSize: '50px 50px'
+        }} />
+
+        <div className="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full text-white">
+          {/* Header */}
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl">
+                <img src={logo} alt="Minimalist" className="h-8 w-auto brightness-0 invert" />
+              </div>
+              <span className="text-2xl font-bold">Minimalist</span>
             </div>
-            <p className="text-lg text-muted-foreground max-w-md">
-              A beautifully simple way to manage your tasks and notes. Stay organized, stay focused.
-            </p>
+            <p className="text-white/70 text-sm">Task & Notes</p>
           </div>
 
-          {/* Features */}
-          <div className="space-y-6">
-            {features.map((feature, index) => (
-              <div 
-                key={feature.title}
-                className="flex items-start gap-4 animate-fade-in"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <feature.icon className="h-5 w-5 text-primary" />
+          {/* Main content */}
+          <div className="py-8">
+            <h2 className="text-4xl xl:text-5xl font-bold mb-4 leading-tight">
+              Organize your life,<br />
+              <span className="text-white/90">beautifully.</span>
+            </h2>
+            <p className="text-lg text-white/70 mb-10 max-w-md">
+              The minimalist productivity app that helps you focus on what matters most.
+            </p>
+
+            {/* Feature cards */}
+            <div className="grid grid-cols-2 gap-4">
+              {features.map((feature, index) => (
+                <div
+                  key={feature.title}
+                  className="group p-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:bg-white/20 hover:border-white/20 transition-all duration-300 animate-fade-in"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <feature.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-semibold text-sm mb-1">{feature.title}</h3>
+                  <p className="text-xs text-white/60 leading-relaxed">{feature.description}</p>
                 </div>
-                <div>
-                  <h3 className="font-medium text-foreground">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground">{feature.description}</p>
-                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer highlights */}
+          <div className="flex items-center gap-6">
+            {highlights.map((item, index) => (
+              <div key={index} className="flex items-center gap-2 text-sm text-white/70">
+                <item.icon className="h-4 w-4" />
+                <span>{item.text}</span>
               </div>
             ))}
-          </div>
-
-          {/* Bottom quote */}
-          <div className="mt-auto pt-12">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span>Simple. Elegant. Effective.</span>
-            </div>
           </div>
         </div>
       </div>
 
       {/* Right side - Auth form */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative">
+        {/* Subtle background pattern for form side */}
+        <div className="absolute inset-0 bg-gradient-to-br from-muted/30 via-background to-muted/20" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+
         {/* Theme toggle */}
         <header className="absolute top-4 right-4 z-20">
           <ThemeToggle />
         </header>
         
-        <main className="flex-1 flex items-center justify-center px-4 py-12">
-          <div className="w-full max-w-sm animate-fade-in">
+        <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
+          <div className="w-full max-w-md animate-fade-in">
             {/* Back button for forgot/reset modes */}
             {(mode === 'forgot' || mode === 'reset') && (
               <button
@@ -270,142 +265,117 @@ export default function Auth() {
               </button>
             )}
 
-            {/* Logo (mobile only) & Title */}
-            <div className="text-center mb-10">
-              <img 
-                src={logo} 
-                alt="Minimalist" 
-                className="h-12 w-auto mx-auto mb-6 dark:brightness-0 dark:invert lg:hidden"
-              />
-              <h1 className="text-2xl font-semibold text-foreground mb-2">
+            {/* Logo & Title */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl mb-6">
+                <img src={logo} alt="Minimalist" className="h-10 w-auto dark:brightness-0 dark:invert" />
+              </div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">
                 {getTitle()}
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground">
                 {getSubtitle()}
               </p>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email field (not shown in reset mode) */}
-              {mode !== 'reset' && (
-                <div className="space-y-1.5">
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="email"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setErrors((prev) => ({ ...prev, email: undefined }));
-                      }}
-                      placeholder="Email"
-                      className="pl-10 h-11 bg-muted/30 border-0 focus-visible:ring-1 focus-visible:ring-primary"
-                      autoComplete="email"
-                    />
+            {/* Form card */}
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 shadow-xl shadow-primary/5">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {mode !== 'reset' && (
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">Email</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => { setEmail(e.target.value); setErrors((prev) => ({ ...prev, email: undefined })); }}
+                        placeholder="you@example.com"
+                        className="pl-10 h-12 bg-background/50 border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
+                        autoComplete="email"
+                      />
+                    </div>
+                    {errors.email && <p className="text-xs text-destructive pl-1">{errors.email}</p>}
                   </div>
-                  {errors.email && (
-                    <p className="text-xs text-destructive pl-1">{errors.email}</p>
-                  )}
-                </div>
-              )}
+                )}
 
-              {/* Password field (not shown in forgot mode) */}
-              {mode !== 'forgot' && (
-                <div className="space-y-1.5">
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setErrors((prev) => ({ ...prev, password: undefined }));
-                      }}
-                      placeholder={mode === 'reset' ? 'New password' : 'Password'}
-                      className="pl-10 h-11 bg-muted/30 border-0 focus-visible:ring-1 focus-visible:ring-primary"
-                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                    />
+                {mode !== 'forgot' && (
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">Password</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="password"
+                        value={password}
+                        onChange={(e) => { setPassword(e.target.value); setErrors((prev) => ({ ...prev, password: undefined })); }}
+                        placeholder={mode === 'reset' ? 'New password' : '••••••••'}
+                        className="pl-10 h-12 bg-background/50 border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
+                        autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                      />
+                    </div>
+                    {errors.password && <p className="text-xs text-destructive pl-1">{errors.password}</p>}
                   </div>
-                  {errors.password && (
-                    <p className="text-xs text-destructive pl-1">{errors.password}</p>
-                  )}
-                </div>
-              )}
+                )}
 
-              {/* Confirm password (only in reset mode) */}
-              {mode === 'reset' && (
-                <div className="space-y-1.5">
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
-                      }}
-                      placeholder="Confirm new password"
-                      className="pl-10 h-11 bg-muted/30 border-0 focus-visible:ring-1 focus-visible:ring-primary"
-                      autoComplete="new-password"
-                    />
+                {mode === 'reset' && (
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">Confirm Password</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => { setConfirmPassword(e.target.value); setErrors((prev) => ({ ...prev, confirmPassword: undefined })); }}
+                        placeholder="••••••••"
+                        className="pl-10 h-12 bg-background/50 border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
+                        autoComplete="new-password"
+                      />
+                    </div>
+                    {errors.confirmPassword && <p className="text-xs text-destructive pl-1">{errors.confirmPassword}</p>}
                   </div>
-                  {errors.confirmPassword && (
-                    <p className="text-xs text-destructive pl-1">{errors.confirmPassword}</p>
-                  )}
+                )}
+
+                {mode === 'login' && (
+                  <div className="text-right">
+                    <button
+                      type="button"
+                      onClick={() => { setMode('forgot'); setErrors({}); }}
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+
+                <Button type="submit" className="w-full h-12 text-base font-medium" disabled={isSubmitting}>
+                  {getButtonText()}
+                </Button>
+              </form>
+
+              {(mode === 'login' || mode === 'signup') && (
+                <div className="mt-6 pt-6 border-t border-border/50">
+                  <p className="text-center text-sm text-muted-foreground">
+                    {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+                    <button
+                      type="button"
+                      onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setErrors({}); }}
+                      className="text-primary font-semibold hover:underline"
+                    >
+                      {mode === 'login' ? 'Sign up' : 'Sign in'}
+                    </button>
+                  </p>
                 </div>
               )}
+            </div>
 
-              {/* Forgot password link (only in login mode) */}
-              {mode === 'login' && (
-                <div className="text-right">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('forgot');
-                      setErrors({});
-                    }}
-                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full h-11"
-                disabled={isSubmitting}
-              >
-                {getButtonText()}
-              </Button>
-            </form>
-
-            {/* Toggle (only for login/signup) */}
+            {/* Mobile feature highlights */}
             {(mode === 'login' || mode === 'signup') && (
-              <p className="text-center mt-8 text-sm text-muted-foreground">
-                {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode(mode === 'login' ? 'signup' : 'login');
-                    setErrors({});
-                  }}
-                  className="text-primary font-medium hover:underline"
-                >
-                  {mode === 'login' ? 'Sign up' : 'Sign in'}
-                </button>
-              </p>
-            )}
-
-            {/* Feature highlights for mobile */}
-            {(mode === 'login' || mode === 'signup') && (
-              <div className="lg:hidden mt-12 pt-8 border-t border-border/50">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="lg:hidden mt-8">
+                <div className="flex flex-wrap justify-center gap-3">
                   {features.map((feature) => (
-                    <div key={feature.title} className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
-                      <span className="text-xs text-muted-foreground">{feature.title}</span>
+                    <div key={feature.title} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 rounded-full">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-xs font-medium text-foreground">{feature.title}</span>
                     </div>
                   ))}
                 </div>
