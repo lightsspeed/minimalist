@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { UsageModal } from '@/components/UsageModal';
+import logo from '@/assets/logo.png';
 
 export function NavBar() {
   const { signOut } = useAuth();
@@ -21,9 +22,11 @@ export function NavBar() {
         <div className="container max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <ListTodo className="h-4 w-4 text-primary-foreground" />
-              </div>
+              <img 
+                src={logo} 
+                alt="Minimalist Logo" 
+                className="h-8 w-8 dark:brightness-0 dark:invert"
+              />
               <h1 className="font-semibold text-lg">Minimalist</h1>
             </Link>
           </div>
