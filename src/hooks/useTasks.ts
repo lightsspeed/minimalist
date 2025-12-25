@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from '@/hooks/use-toast';
+import { parseDueDate } from '@/lib/parseDueDate';
 
 export interface Task {
   id: string;
@@ -9,9 +10,12 @@ export interface Task {
   description: string | null;
   tags: string[];
   is_completed: boolean;
+  is_pinned: boolean;
+  due_date: string | null;
   position: number;
   created_at: string;
   updated_at: string;
+  user_id: string;
 }
 
 export function useTasks() {
@@ -48,18 +52,31 @@ export function useTasks() {
     fetchTasks();
   }, [user]);
 
-  const addTask = async (title: string, description: string, tags: string[]) => {
+  const addTask = async (title: string, description: string, tags: string[], dueDate?: Date | null) => {
     if (!user) return { error: new Error('Not authenticated') };
+
+    // Parse due date from title if not explicitly provided
+    let finalDueDate = dueDate;
+    let finalTitle = title;
+    
+    if (!dueDate) {
+      const parsed = parseDueDate(title);
+      if (parsed.dueDate) {
+        finalDueDate = parsed.dueDate;
+        finalTitle = parsed.cleanedText;
+      }
+    }
 
     // Get max position
     const maxPosition = tasks.length > 0 ? Math.max(...tasks.map(t => t.position || 0)) + 1 : 0;
 
     const { error } = await supabase.from('tasks').insert({
       user_id: user.id,
-      title,
+      title: finalTitle,
       description: description || null,
       tags,
       position: maxPosition,
+      due_date: finalDueDate ? finalDueDate.toISOString() : null,
     });
 
     if (error) {
@@ -76,7 +93,7 @@ export function useTasks() {
     return { error: null };
   };
 
-  const updateTask = async (id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'tags' | 'is_completed' | 'position'>>) => {
+  const updateTask = async (id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'tags' | 'is_completed' | 'position' | 'is_pinned' | 'due_date'>>) => {
     const { error } = await supabase
       .from('tasks')
       .update(updates)
@@ -92,6 +109,70 @@ export function useTasks() {
     }
 
     toast({ title: 'Task updated' });
+    await fetchTasks();
+    return { error: null };
+  };
+
+  const togglePin = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return { error: new Error('Task not found') };
+
+    const { error } = await supabase
+      .from('tasks')
+      .update({ is_pinned: !task.is_pinned })
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: 'Error updating task',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return { error };
+    }
+
+    toast({ title: task.is_pinned ? 'Task unpinned' : 'Task pinned' });
+    await fetchTasks();
+    return { error: null };
+  };
+
+  const convertToNote = async (task: Task) => {
+    if (!user) return { error: new Error('Not authenticated') };
+
+    // Create note content from task
+    const noteContent = `# ${task.title}\n\n${task.description || ''}`;
+
+    const { error: noteError } = await supabase.from('notes').insert({
+      user_id: user.id,
+      content: noteContent,
+      tags: task.tags,
+    });
+
+    if (noteError) {
+      toast({
+        title: 'Error creating note',
+        description: noteError.message,
+        variant: 'destructive',
+      });
+      return { error: noteError };
+    }
+
+    // Delete the task
+    const { error: deleteError } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', task.id);
+
+    if (deleteError) {
+      toast({
+        title: 'Error deleting task',
+        description: deleteError.message,
+        variant: 'destructive',
+      });
+      return { error: deleteError };
+    }
+
+    toast({ title: 'Task converted to note' });
     await fetchTasks();
     return { error: null };
   };
@@ -141,6 +222,8 @@ export function useTasks() {
     updateTask,
     deleteTask,
     reorderTasks,
+    togglePin,
+    convertToNote,
     refetch: fetchTasks,
   };
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pencil, Trash2, Share2, Check, Circle, ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { Pencil, Trash2, Share2, Check, Circle, ChevronDown, ChevronUp, GripVertical, Pin, FileText, Calendar } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,13 @@ import { TagBadge } from './TagBadge';
 import { SubtaskList } from './SubtaskList';
 import { Task } from '@/hooks/useTasks';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isToday, isTomorrow, isPast } from 'date-fns';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface TaskCardProps {
   task: Task;
@@ -16,6 +22,8 @@ interface TaskCardProps {
   onDelete: (id: string) => void;
   onShare: (task: Task) => void;
   onToggleComplete: (id: string, completed: boolean) => void;
+  onTogglePin: (id: string) => void;
+  onConvertToNote: (task: Task) => void;
   onTagClick?: (tag: string) => void;
 }
 
@@ -25,6 +33,8 @@ export function TaskCard({
   onDelete, 
   onShare, 
   onToggleComplete,
+  onTogglePin,
+  onConvertToNote,
   onTagClick 
 }: TaskCardProps) {
   const [isHovered, setIsHovered] = useState(false);
@@ -50,6 +60,21 @@ export function TaskCard({
     }
   };
 
+  const formatDueDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (isToday(date)) return 'Today';
+    if (isTomorrow(date)) return 'Tomorrow';
+    return format(date, 'MMM d');
+  };
+
+  const getDueDateStyles = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (task.is_completed) return 'text-muted-foreground';
+    if (isPast(date) && !isToday(date)) return 'text-destructive';
+    if (isToday(date)) return 'text-primary font-medium';
+    return 'text-muted-foreground';
+  };
+
   return (
     <Card 
       ref={setNodeRef}
@@ -57,6 +82,7 @@ export function TaskCard({
       className={cn(
         'transition-all duration-200 hover:shadow-md hover:bg-hover-blue animate-fade-in',
         task.is_completed && 'opacity-60',
+        task.is_pinned && 'border-primary/30 bg-primary/[0.02]',
         isDragging && 'opacity-50 shadow-lg'
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -83,57 +109,123 @@ export function TaskCard({
               )}
             </button>
             <div className="flex-1 min-w-0">
-              <h3 className={cn(
-                'font-semibold text-card-foreground truncate',
-                task.is_completed && 'line-through text-muted-foreground'
-              )}>
-                {task.title}
-              </h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                {format(new Date(task.created_at), 'MMM d, yyyy • h:mm a')}
-              </p>
+              <div className="flex items-center gap-2">
+                {task.is_pinned && (
+                  <Pin className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                )}
+                <h3 className={cn(
+                  'font-semibold text-foreground truncate',
+                  task.is_completed && 'line-through text-muted-foreground'
+                )}>
+                  {task.title}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-xs text-muted-foreground">
+                  {format(new Date(task.created_at), 'MMM d, yyyy • h:mm a')}
+                </p>
+                {task.due_date && (
+                  <span className={cn('text-xs flex items-center gap-1', getDueDateStyles(task.due_date))}>
+                    <Calendar className="h-3 w-3" />
+                    {formatDueDate(task.due_date)}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className={cn(
-            'flex gap-1 transition-opacity duration-200',
+            'flex gap-0.5 transition-opacity duration-200',
             isHovered ? 'opacity-100' : 'opacity-0 sm:opacity-100'
           )}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setShowSubtasks(!showSubtasks)}
-            >
-              {showSubtasks ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => onEdit(task)}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-primary hover:text-primary"
-              onClick={() => onShare(task)}
-            >
-              <Share2 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-destructive hover:text-destructive"
-              onClick={() => onDelete(task.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setShowSubtasks(!showSubtasks)}
+                  >
+                    {showSubtasks ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Subtasks</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn('h-8 w-8', task.is_pinned && 'text-primary')}
+                    onClick={() => onTogglePin(task.id)}
+                  >
+                    <Pin className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{task.is_pinned ? 'Unpin' : 'Pin'}</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => onEdit(task)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Edit</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => onConvertToNote(task)}
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Convert to Note</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-primary hover:text-primary"
+                    onClick={() => onShare(task)}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Share</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => onDelete(task.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </CardHeader>

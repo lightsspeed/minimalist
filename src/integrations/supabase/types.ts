@@ -21,6 +21,7 @@ export type Database = {
           created_at: string
           folder: string | null
           id: string
+          is_pinned: boolean
           tags: string[] | null
           updated_at: string
           user_id: string
@@ -31,6 +32,7 @@ export type Database = {
           created_at?: string
           folder?: string | null
           id?: string
+          is_pinned?: boolean
           tags?: string[] | null
           updated_at?: string
           user_id: string
@@ -41,6 +43,7 @@ export type Database = {
           created_at?: string
           folder?: string | null
           id?: string
+          is_pinned?: boolean
           tags?: string[] | null
           updated_at?: string
           user_id?: string
@@ -217,8 +220,10 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          due_date: string | null
           id: string
           is_completed: boolean
+          is_pinned: boolean
           position: number | null
           tags: string[] | null
           title: string
@@ -228,8 +233,10 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          due_date?: string | null
           id?: string
           is_completed?: boolean
+          is_pinned?: boolean
           position?: number | null
           tags?: string[] | null
           title: string
@@ -239,8 +246,10 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          due_date?: string | null
           id?: string
           is_completed?: boolean
+          is_pinned?: boolean
           position?: number | null
           tags?: string[] | null
           title?: string
