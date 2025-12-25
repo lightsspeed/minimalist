@@ -22,7 +22,7 @@ const features = [
   },
   {
     icon: FileText,
-    title: 'Beautiful Notes',
+    title: 'Elegant Notes',
     description: 'Organize with tags, folders & secure sharing',
   },
   {
