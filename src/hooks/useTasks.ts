@@ -9,6 +9,7 @@ export interface Task {
   description: string | null;
   tags: string[];
   is_completed: boolean;
+  position: number;
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +29,7 @@ export function useTasks() {
     const { data, error } = await supabase
       .from('tasks')
       .select('*')
+      .order('position', { ascending: true })
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -49,11 +51,15 @@ export function useTasks() {
   const addTask = async (title: string, description: string, tags: string[]) => {
     if (!user) return { error: new Error('Not authenticated') };
 
+    // Get max position
+    const maxPosition = tasks.length > 0 ? Math.max(...tasks.map(t => t.position || 0)) + 1 : 0;
+
     const { error } = await supabase.from('tasks').insert({
       user_id: user.id,
       title,
       description: description || null,
       tags,
+      position: maxPosition,
     });
 
     if (error) {
@@ -70,7 +76,7 @@ export function useTasks() {
     return { error: null };
   };
 
-  const updateTask = async (id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'tags' | 'is_completed'>>) => {
+  const updateTask = async (id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'tags' | 'is_completed' | 'position'>>) => {
     const { error } = await supabase
       .from('tasks')
       .update(updates)
@@ -88,6 +94,24 @@ export function useTasks() {
     toast({ title: 'Task updated' });
     await fetchTasks();
     return { error: null };
+  };
+
+  const reorderTasks = async (reorderedTasks: Task[]) => {
+    // Update local state immediately for responsiveness
+    setTasks(reorderedTasks);
+
+    // Update positions in database
+    const updates = reorderedTasks.map((task, index) => ({
+      id: task.id,
+      position: index,
+    }));
+
+    for (const update of updates) {
+      await supabase
+        .from('tasks')
+        .update({ position: update.position })
+        .eq('id', update.id);
+    }
   };
 
   const deleteTask = async (id: string) => {
@@ -116,6 +140,7 @@ export function useTasks() {
     addTask,
     updateTask,
     deleteTask,
+    reorderTasks,
     refetch: fetchTasks,
   };
 }

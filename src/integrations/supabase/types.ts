@@ -106,11 +106,59 @@ export type Database = {
           },
         ]
       }
+      shared_personal_notes: {
+        Row: {
+          content: string
+          created_at: string
+          delete_after_reading: boolean
+          expires_at: string | null
+          id: string
+          is_read: boolean
+          note_id: string
+          password_hash: string
+          share_token: string
+          title: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          delete_after_reading?: boolean
+          expires_at?: string | null
+          id?: string
+          is_read?: boolean
+          note_id: string
+          password_hash: string
+          share_token: string
+          title?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          delete_after_reading?: boolean
+          expires_at?: string | null
+          id?: string
+          is_read?: boolean
+          note_id?: string
+          password_hash?: string
+          share_token?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_personal_notes_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subtasks: {
         Row: {
           created_at: string
           id: string
           is_completed: boolean
+          position: number | null
           task_id: string
           title: string
           updated_at: string
@@ -119,6 +167,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_completed?: boolean
+          position?: number | null
           task_id: string
           title: string
           updated_at?: string
@@ -127,6 +176,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_completed?: boolean
+          position?: number | null
           task_id?: string
           title?: string
           updated_at?: string
@@ -147,6 +197,7 @@ export type Database = {
           description: string | null
           id: string
           is_completed: boolean
+          position: number | null
           tags: string[] | null
           title: string
           updated_at: string
@@ -157,6 +208,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_completed?: boolean
+          position?: number | null
           tags?: string[] | null
           title: string
           updated_at?: string
@@ -167,6 +219,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_completed?: boolean
+          position?: number | null
           tags?: string[] | null
           title?: string
           updated_at?: string

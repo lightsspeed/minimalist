@@ -1,5 +1,22 @@
-import { useState, useEffect } from 'react';
-import { Plus, X, Check, Circle } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, X, Check, Circle, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSubtasks, Subtask } from '@/hooks/useSubtasks';
@@ -7,12 +24,87 @@ import { cn } from '@/lib/utils';
 
 interface SubtaskListProps {
   taskId: string;
+  onAllCompleted?: () => void;
 }
 
-export function SubtaskList({ taskId }: SubtaskListProps) {
-  const { subtasks, loading, addSubtask, updateSubtask, deleteSubtask } = useSubtasks(taskId);
+function SortableSubtask({
+  subtask,
+  onToggle,
+  onDelete,
+}: {
+  subtask: Subtask;
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: subtask.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'flex items-center gap-2 group',
+        isDragging && 'opacity-50'
+      )}
+    >
+      <button
+        className="flex-shrink-0 cursor-grab text-muted-foreground/50 hover:text-muted-foreground"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
+      <button
+        onClick={onToggle}
+        className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors"
+      >
+        {subtask.is_completed ? (
+          <Check className="h-3.5 w-3.5 text-success" />
+        ) : (
+          <Circle className="h-3.5 w-3.5" />
+        )}
+      </button>
+      <span
+        className={cn(
+          'flex-1 text-sm',
+          subtask.is_completed && 'line-through text-muted-foreground'
+        )}
+      >
+        {subtask.title}
+      </span>
+      <button
+        onClick={onDelete}
+        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+export function SubtaskList({ taskId, onAllCompleted }: SubtaskListProps) {
+  const { subtasks, loading, addSubtask, updateSubtask, deleteSubtask, reorderSubtasks } = useSubtasks(taskId, {
+    onAllCompleted,
+  });
   const [newSubtask, setNewSubtask] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const handleAdd = async () => {
     if (!newSubtask.trim()) return;
@@ -36,6 +128,17 @@ export function SubtaskList({ taskId }: SubtaskListProps) {
     await updateSubtask(subtask.id, { is_completed: !subtask.is_completed });
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = subtasks.findIndex(s => s.id === active.id);
+      const newIndex = subtasks.findIndex(s => s.id === over.id);
+      const reordered = arrayMove(subtasks, oldIndex, newIndex);
+      reorderSubtasks(reordered);
+    }
+  };
+
   if (loading) {
     return <div className="text-xs text-muted-foreground py-2">Loading subtasks...</div>;
   }
@@ -51,39 +154,24 @@ export function SubtaskList({ taskId }: SubtaskListProps) {
         </div>
       )}
       
-      <div className="space-y-1.5">
-        {subtasks.map((subtask) => (
-          <div
-            key={subtask.id}
-            className="flex items-center gap-2 group"
-          >
-            <button
-              onClick={() => handleToggle(subtask)}
-              className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors"
-            >
-              {subtask.is_completed ? (
-                <Check className="h-3.5 w-3.5 text-success" />
-              ) : (
-                <Circle className="h-3.5 w-3.5" />
-              )}
-            </button>
-            <span
-              className={cn(
-                'flex-1 text-sm',
-                subtask.is_completed && 'line-through text-muted-foreground'
-              )}
-            >
-              {subtask.title}
-            </span>
-            <button
-              onClick={() => deleteSubtask(subtask.id)}
-              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={subtasks.map(s => s.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-1.5">
+            {subtasks.map((subtask) => (
+              <SortableSubtask
+                key={subtask.id}
+                subtask={subtask}
+                onToggle={() => handleToggle(subtask)}
+                onDelete={() => deleteSubtask(subtask.id)}
+              />
+            ))}
           </div>
-        ))}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       {isAdding ? (
         <div className="flex items-center gap-2 mt-2">

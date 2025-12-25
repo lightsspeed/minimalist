@@ -7,11 +7,16 @@ export interface Subtask {
   task_id: string;
   title: string;
   is_completed: boolean;
+  position: number;
   created_at: string;
   updated_at: string;
 }
 
-export function useSubtasks(taskId: string | null) {
+interface UseSubtasksOptions {
+  onAllCompleted?: () => void;
+}
+
+export function useSubtasks(taskId: string | null, options?: UseSubtasksOptions) {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -26,6 +31,7 @@ export function useSubtasks(taskId: string | null) {
       .from('subtasks')
       .select('*')
       .eq('task_id', taskId)
+      .order('position', { ascending: true })
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -40,12 +46,22 @@ export function useSubtasks(taskId: string | null) {
     fetchSubtasks();
   }, [taskId]);
 
+  // Check if all subtasks are completed
+  useEffect(() => {
+    if (subtasks.length > 0 && subtasks.every(s => s.is_completed)) {
+      options?.onAllCompleted?.();
+    }
+  }, [subtasks]);
+
   const addSubtask = async (title: string) => {
     if (!taskId) return { error: new Error('No task selected') };
+
+    const maxPosition = subtasks.length > 0 ? Math.max(...subtasks.map(s => s.position || 0)) + 1 : 0;
 
     const { error } = await supabase.from('subtasks').insert({
       task_id: taskId,
       title,
+      position: maxPosition,
     });
 
     if (error) {
@@ -61,7 +77,7 @@ export function useSubtasks(taskId: string | null) {
     return { error: null };
   };
 
-  const updateSubtask = async (id: string, updates: Partial<Pick<Subtask, 'title' | 'is_completed'>>) => {
+  const updateSubtask = async (id: string, updates: Partial<Pick<Subtask, 'title' | 'is_completed' | 'position'>>) => {
     const { error } = await supabase
       .from('subtasks')
       .update(updates)
@@ -78,6 +94,17 @@ export function useSubtasks(taskId: string | null) {
 
     await fetchSubtasks();
     return { error: null };
+  };
+
+  const reorderSubtasks = async (reorderedSubtasks: Subtask[]) => {
+    setSubtasks(reorderedSubtasks);
+
+    for (let i = 0; i < reorderedSubtasks.length; i++) {
+      await supabase
+        .from('subtasks')
+        .update({ position: i })
+        .eq('id', reorderedSubtasks[i].id);
+    }
   };
 
   const deleteSubtask = async (id: string) => {
@@ -105,6 +132,7 @@ export function useSubtasks(taskId: string | null) {
     addSubtask,
     updateSubtask,
     deleteSubtask,
+    reorderSubtasks,
     refetch: fetchSubtasks,
   };
 }
