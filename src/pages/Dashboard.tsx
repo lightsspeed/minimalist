@@ -96,8 +96,12 @@ export default function Dashboard() {
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Don't trigger if user is typing in an input/textarea
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+    
     // Cmd/Ctrl + N to add new task
-    if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
       e.preventDefault();
       setSelectedTask(null);
       setModalMode('add');
@@ -230,10 +234,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Keyboard hint */}
-        <p className="text-xs text-muted-foreground mb-4">
-          Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">⌘N</kbd> to add a task • Drag to reorder
-        </p>
 
         {/* Task List */}
         {tasksLoading ? (
