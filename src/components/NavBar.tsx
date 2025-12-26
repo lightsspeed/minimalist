@@ -12,6 +12,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import {
   Tooltip,
@@ -80,15 +83,34 @@ export function NavBar() {
                     <HelpCircle className="h-4 w-4 mr-2" />
                     Usage & Shortcuts
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a 
-                      href="mailto:akhileshchoure1@gmail.com" 
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
-                      <Bug className="h-4 w-4" />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Bug className="h-4 w-4 mr-2" />
                       Report a Bug
-                    </a>
-                  </DropdownMenuItem>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="bg-background">
+                      <DropdownMenuItem asChild>
+                        <a 
+                          href="mailto:akhileshchoure1@gmail.com" 
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <Mail className="h-4 w-4" />
+                          Email
+                        </a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <a 
+                          href="https://github.com/lightsspeed/minimalist/issues/new" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <Github className="h-4 w-4" />
+                          GitHub Issue
+                        </a>
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                     <LogOut className="h-4 w-4 mr-2" />
