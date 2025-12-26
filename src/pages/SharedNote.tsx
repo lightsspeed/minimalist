@@ -76,40 +76,38 @@ export default function SharedNote() {
     setVerifying(true);
 
     try {
-      // Hash the entered password
-      const encoder = new TextEncoder();
-      const data = encoder.encode(password);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-      // Use secure fetch function - verifies password server-side
-      const { data: noteData, error } = await supabase.rpc('fetch_shared_note', {
-        p_share_token: token,
-        p_password_hash: passwordHash
+      // Use edge function for bcrypt password verification
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-shared-note`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          share_token: token, 
+          password, 
+          note_type: 'task' 
+        }),
       });
 
-      if (error || !noteData || noteData.length === 0) {
+      if (!response.ok) {
+        const errorData = await response.json();
         toast({
-          title: 'Incorrect password',
-          description: 'The password you entered is incorrect.',
+          title: response.status === 401 ? 'Incorrect password' : 'Error',
+          description: errorData.error || 'Something went wrong. Please try again.',
           variant: 'destructive',
         });
         return;
       }
 
-      const fetchedNote = noteData[0] as unknown as {
-        id: string;
-        task_id: string;
-        title: string;
-        description: string | null;
-        tags: string[] | null;
-        subtasks: SubtaskData[] | null;
-        expires_at: string | null;
-        created_at: string;
-      };
-
+      const { note: fetchedNote } = await response.json();
       // Password correct - show note
+      setNote({
+        id: fetchedNote.id,
+        title: fetchedNote.title,
+        description: fetchedNote.description,
+        tags: fetchedNote.tags || [],
+        subtasks: fetchedNote.subtasks || [],
+        created_at: fetchedNote.created_at,
+      });
+      setUnlocked(true);
       setNote({
         id: fetchedNote.id,
         title: fetchedNote.title,
