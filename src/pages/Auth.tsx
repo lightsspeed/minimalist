@@ -249,8 +249,8 @@ export default function Auth() {
           {/* Main content */}
           <div className="py-8">
             <h2 className="text-4xl xl:text-5xl font-bold mb-4 leading-tight">
-              Organize your life,<br />
-              <span className="text-black/80 dark:text-white/80">effortlessly.</span>
+              Capture ideas. Crush tasks.<br />
+              <span className="text-black/80 dark:text-white/80">Stay minimal.</span>
             </h2>
             <p className="text-lg text-black/50 dark:text-white/50 mb-10 max-w-md">
               The minimalist productivity app that helps you focus on what matters most.
