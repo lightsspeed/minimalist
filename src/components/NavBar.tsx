@@ -132,7 +132,7 @@ export function NavBar() {
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <a 
-                      href="https://github.com/AkhileshChy/minimalist-task-manager/issues" 
+                      href="https://github.com/lightsspeed/minimalist/issues/new" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 cursor-pointer"
