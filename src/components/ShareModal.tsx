@@ -94,12 +94,18 @@ export function ShareModal({ open, onOpenChange, task }: ShareModalProps) {
       // Generate a unique token
       const shareToken = crypto.randomUUID();
       
-      // Simple hash for the password
-      const encoder = new TextEncoder();
-      const data = encoder.encode(password);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      // Hash password using bcrypt via edge function
+      const hashResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hash-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'hash', password }),
+      });
+      
+      if (!hashResponse.ok) {
+        throw new Error('Failed to hash password');
+      }
+      
+      const { hash: passwordHash } = await hashResponse.json();
 
       // Save to database with subtasks
       const { error } = await supabase.from('shared_notes').insert({

@@ -1,1 +1,7 @@
 project_id = "qsuighkvqbvotufneksl"
+
+[functions.hash-password]
+verify_jwt = false
+
+[functions.verify-shared-note]
+verify_jwt = false
