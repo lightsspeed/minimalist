@@ -85,6 +85,30 @@ export type Database = {
         }
         Relationships: []
       }
+      share_access_attempts: {
+        Row: {
+          attempted_at: string
+          id: string
+          ip_address: string | null
+          is_success: boolean
+          share_token: string
+        }
+        Insert: {
+          attempted_at?: string
+          id?: string
+          ip_address?: string | null
+          is_success?: boolean
+          share_token: string
+        }
+        Update: {
+          attempted_at?: string
+          id?: string
+          ip_address?: string | null
+          is_success?: boolean
+          share_token?: string
+        }
+        Relationships: []
+      }
       shared_notes: {
         Row: {
           created_at: string
@@ -280,32 +304,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      fetch_shared_note: {
-        Args: { p_password_hash: string; p_share_token: string }
-        Returns: {
-          created_at: string
-          description: string
-          expires_at: string
-          id: string
-          subtasks: Json
-          tags: string[]
-          task_id: string
-          title: string
-        }[]
-      }
-      fetch_shared_personal_note: {
-        Args: { p_password_hash: string; p_share_token: string }
-        Returns: {
-          content: string
-          created_at: string
-          delete_after_reading: boolean
-          expires_at: string
-          id: string
-          is_read: boolean
-          note_id: string
-          title: string
-        }[]
-      }
+      cleanup_old_access_attempts: { Args: never; Returns: undefined }
       mark_shared_note_as_read: {
         Args: { p_share_token: string }
         Returns: boolean
