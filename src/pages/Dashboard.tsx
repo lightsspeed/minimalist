@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Plus, X, ListTodo } from 'lucide-react';
+import { Plus, X, ListTodo, Archive } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   DndContext,
   closestCenter,
@@ -62,9 +63,9 @@ export default function Dashboard() {
     return Array.from(tagSet).sort();
   }, [tasks]);
 
-  // Filter and sort tasks - pinned first, then by position, completed at bottom, exclude templates
+  // Filter and sort tasks - exclude completed and templates from main view
   const filteredTasks = useMemo(() => {
-    let result = tasks.filter(t => !t.is_template); // Exclude templates from main view
+    let result = tasks.filter(t => !t.is_template && !t.is_completed); // Exclude templates and completed from main view
     
     // Filter by search query
     if (searchQuery) {
@@ -81,17 +82,11 @@ export default function Dashboard() {
       result = result.filter((task) => task.tags.includes(activeTag));
     }
     
-    // Sort - pinned first, then by completion, then by position
+    // Sort - pinned first, then by position
     result.sort((a, b) => {
-      // Pinned items first (but only among non-completed)
-      if (!a.is_completed && !b.is_completed) {
-        if (a.is_pinned !== b.is_pinned) {
-          return a.is_pinned ? -1 : 1;
-        }
-      }
-      // Completed tasks always at bottom
-      if (a.is_completed !== b.is_completed) {
-        return a.is_completed ? 1 : -1;
+      // Pinned items first
+      if (a.is_pinned !== b.is_pinned) {
+        return a.is_pinned ? -1 : 1;
       }
       // Sort by position for drag-and-drop ordering
       return (a.position || 0) - (b.position || 0);
@@ -225,7 +220,7 @@ export default function Dashboard() {
             Welcome, <span className="text-primary">{displayName}</span>
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {filteredTasks.filter(t => !t.is_completed).length} pending tasks
+            {filteredTasks.length} pending tasks
           </p>
         </div>
 
@@ -318,6 +313,17 @@ export default function Dashboard() {
             </SortableContext>
           </DndContext>
         )}
+
+        {/* Footer note about completed tasks */}
+        <div className="mt-8 pt-4 border-t border-border text-center">
+          <p className="text-sm text-muted-foreground">
+            Completed tasks can be found in the{' '}
+            <Link to="/archive" className="text-primary hover:underline inline-flex items-center gap-1">
+              <Archive className="h-3 w-3" />
+              Archive
+            </Link>
+          </p>
+        </div>
       </main>
 
       {/* Modals */}
