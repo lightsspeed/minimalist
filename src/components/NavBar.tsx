@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ListTodo, FileText, BarChart3, LogOut, HelpCircle, Archive, Bug, Mail, Github, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { UsageModal } from '@/components/UsageModal';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,13 +26,34 @@ import {
 import logo from '@/assets/logo.png';
 
 export function NavBar() {
-  const { signOut } = useAuth();
+  const { signOut, session } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [usageModalOpen, setUsageModalOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const isMobile = useIsMobile();
 
   const handleSignOut = async () => {
-    await signOut();
+    if (isSigningOut || !session) {
+      // Already signing out or no session - just redirect
+      navigate('/auth');
+      return;
+    }
+    
+    setIsSigningOut(true);
+    try {
+      const { error } = await signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+        // Even if there's an error, navigate to auth page
+      }
+      navigate('/auth');
+    } catch (err) {
+      console.error('Sign out exception:', err);
+      navigate('/auth');
+    } finally {
+      setIsSigningOut(false);
+    }
   };
 
   const navItems = [
