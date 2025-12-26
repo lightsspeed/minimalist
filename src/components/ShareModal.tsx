@@ -19,6 +19,7 @@ import {
 import { Task } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useQRCode } from '@/hooks/useQRCode';
 
 interface ShareModalProps {
   open: boolean;
@@ -40,6 +41,9 @@ export function ShareModal({ open, onOpenChange, task }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState<'password' | 'share'>('password');
   const [subtasks, setSubtasks] = useState<SubtaskData[]>([]);
+
+  // Client-side QR code generation
+  const { qrCode, downloadPng, downloadSvg, copySvg } = useQRCode(shareLink);
 
   // Fetch subtasks when modal opens
   useEffect(() => {
@@ -179,50 +183,21 @@ export function ShareModal({ open, onOpenChange, task }: ShareModalProps) {
     }
   };
 
-  const qrCodeUrl = shareLink
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareLink)}`
-    : '';
-
-  const qrCodeSvgUrl = shareLink
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&format=svg&data=${encodeURIComponent(shareLink)}`
-    : '';
-
   const exportQRCodePng = () => {
-    const link = document.createElement('a');
-    link.href = qrCodeUrl;
-    link.download = 'task-qr-code.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadPng('task-qr-code.png');
     toast({ title: 'QR code downloaded as PNG!' });
   };
 
-  const exportQRCodeSvg = async () => {
-    try {
-      const response = await fetch(qrCodeSvgUrl);
-      const svgText = await response.text();
-      const blob = new Blob([svgText], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'task-qr-code.svg';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast({ title: 'QR code downloaded as SVG!' });
-    } catch {
-      toast({ title: 'Failed to download SVG', variant: 'destructive' });
-    }
+  const exportQRCodeSvg = () => {
+    downloadSvg('task-qr-code.svg');
+    toast({ title: 'QR code downloaded as SVG!' });
   };
 
   const copyQRCodeSvg = async () => {
-    try {
-      const response = await fetch(qrCodeSvgUrl);
-      const svgText = await response.text();
-      await navigator.clipboard.writeText(svgText);
+    const success = await copySvg();
+    if (success) {
       toast({ title: 'SVG code copied to clipboard!' });
-    } catch {
+    } else {
       toast({ title: 'Failed to copy SVG', variant: 'destructive' });
     }
   };
@@ -334,11 +309,17 @@ export function ShareModal({ open, onOpenChange, task }: ShareModalProps) {
             <div className="border rounded-lg p-4 space-y-4">
               <div className="flex items-start gap-4">
                 <div className="bg-white p-2 rounded">
-                  <img
-                    src={qrCodeUrl}
-                    alt="QR Code"
-                    className="w-24 h-24"
-                  />
+                  {qrCode ? (
+                    <img
+                      src={qrCode.dataUrl}
+                      alt="QR Code"
+                      className="w-24 h-24"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 flex items-center justify-center text-muted-foreground text-xs">
+                      Loading...
+                    </div>
+                  )}
                 </div>
                 <div className="text-left flex-1">
                   <h3 className="font-medium mb-1">Share this task on mobile</h3>
@@ -349,7 +330,7 @@ export function ShareModal({ open, onOpenChange, task }: ShareModalProps) {
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
+                  <Button variant="outline" className="gap-2" disabled={!qrCode}>
                     Export QR code
                     <ChevronDown className="h-4 w-4" />
                   </Button>

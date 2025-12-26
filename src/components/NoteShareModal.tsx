@@ -20,6 +20,7 @@ import {
 import { Note } from '@/hooks/useNotes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useQRCode } from '@/hooks/useQRCode';
 
 interface NoteShareModalProps {
   open: boolean;
@@ -38,6 +39,9 @@ export function NoteShareModal({ open, onOpenChange, note }: NoteShareModalProps
   const [step, setStep] = useState<'options' | 'success'>('options');
   const [expiration, setExpiration] = useState<ExpirationOption>('1day');
   const [deleteAfterReading, setDeleteAfterReading] = useState(false);
+
+  // Client-side QR code generation
+  const { qrCode, downloadPng, downloadSvg, copySvg } = useQRCode(shareLink);
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -157,10 +161,6 @@ export function NoteShareModal({ open, onOpenChange, note }: NoteShareModalProps
     }, 200);
   };
 
-  const qrCodeUrl = shareLink
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareLink)}`
-    : '';
-
   const expirationOptions: { value: ExpirationOption; label: string }[] = [
     { value: '1hour', label: '1 hour' },
     { value: '1day', label: '1 day' },
@@ -168,46 +168,21 @@ export function NoteShareModal({ open, onOpenChange, note }: NoteShareModalProps
     { value: '1month', label: '1 month' },
   ];
 
-  const qrCodeSvgUrl = shareLink
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&format=svg&data=${encodeURIComponent(shareLink)}`
-    : '';
-
   const exportQRCodePng = () => {
-    const link = document.createElement('a');
-    link.href = qrCodeUrl;
-    link.download = 'note-qr-code.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadPng('note-qr-code.png');
     toast({ title: 'QR code downloaded as PNG!' });
   };
 
-  const exportQRCodeSvg = async () => {
-    try {
-      const response = await fetch(qrCodeSvgUrl);
-      const svgText = await response.text();
-      const blob = new Blob([svgText], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'note-qr-code.svg';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast({ title: 'QR code downloaded as SVG!' });
-    } catch {
-      toast({ title: 'Failed to download SVG', variant: 'destructive' });
-    }
+  const exportQRCodeSvg = () => {
+    downloadSvg('note-qr-code.svg');
+    toast({ title: 'QR code downloaded as SVG!' });
   };
 
   const copyQRCodeSvg = async () => {
-    try {
-      const response = await fetch(qrCodeSvgUrl);
-      const svgText = await response.text();
-      await navigator.clipboard.writeText(svgText);
+    const success = await copySvg();
+    if (success) {
       toast({ title: 'SVG code copied to clipboard!' });
-    } catch {
+    } else {
       toast({ title: 'Failed to copy SVG', variant: 'destructive' });
     }
   };
@@ -363,11 +338,17 @@ export function NoteShareModal({ open, onOpenChange, note }: NoteShareModalProps
             <div className="border rounded-lg p-4 space-y-4">
               <div className="flex items-start gap-4">
                 <div className="bg-white p-2 rounded">
-                  <img
-                    src={qrCodeUrl}
-                    alt="QR Code"
-                    className="w-24 h-24"
-                  />
+                  {qrCode ? (
+                    <img
+                      src={qrCode.dataUrl}
+                      alt="QR Code"
+                      className="w-24 h-24"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 flex items-center justify-center text-muted-foreground text-xs">
+                      Loading...
+                    </div>
+                  )}
                 </div>
                 <div className="text-left flex-1">
                   <h3 className="font-medium mb-1">Share this note on mobile</h3>
@@ -378,7 +359,11 @@ export function NoteShareModal({ open, onOpenChange, note }: NoteShareModalProps
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2 border-foreground text-foreground hover:bg-foreground hover:text-background">
+                  <Button 
+                    variant="outline" 
+                    className="gap-2 border-foreground text-foreground hover:bg-foreground hover:text-background"
+                    disabled={!qrCode}
+                  >
                     Export QR code
                     <ChevronDown className="h-4 w-4" />
                   </Button>
