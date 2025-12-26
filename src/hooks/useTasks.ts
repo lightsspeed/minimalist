@@ -13,6 +13,7 @@ export interface Task {
   is_pinned: boolean;
   is_template: boolean;
   due_date: string | null;
+  completed_at: string | null;
   position: number;
   created_at: string;
   updated_at: string;
@@ -134,9 +135,17 @@ export function useTasks() {
   };
 
   const updateTask = async (id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'tags' | 'is_completed' | 'position' | 'is_pinned' | 'is_template' | 'due_date'>>) => {
+    // If marking as completed, set completed_at timestamp
+    const finalUpdates: Record<string, unknown> = { ...updates };
+    if (updates.is_completed === true) {
+      finalUpdates.completed_at = new Date().toISOString();
+    } else if (updates.is_completed === false) {
+      finalUpdates.completed_at = null;
+    }
+
     const { error } = await supabase
       .from('tasks')
-      .update(updates)
+      .update(finalUpdates)
       .eq('id', id);
 
     if (error) {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pencil, Trash2, Share2, Check, Circle, ChevronDown, ChevronUp, GripVertical, Pin, FileText, Calendar, MoreHorizontal, Copy } from 'lucide-react';
+import { Pencil, Trash2, Share2, Check, Circle, ChevronDown, ChevronUp, GripVertical, Pin, FileText, Calendar, MoreHorizontal, Copy, CheckCircle2 } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
@@ -127,7 +127,7 @@ export function TaskCard({
                   {task.title}
                 </h3>
               </div>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <p className="text-xs text-muted-foreground">
                   {format(new Date(task.created_at), 'MMM d, yyyy • h:mm a')}
                 </p>
@@ -135,6 +135,12 @@ export function TaskCard({
                   <span className={cn('text-xs flex items-center gap-1', getDueDateStyles(task.due_date))}>
                     <Calendar className="h-3 w-3" />
                     {formatDueDate(task.due_date)}
+                  </span>
+                )}
+                {task.is_completed && task.completed_at && (
+                  <span className="text-xs flex items-center gap-1 text-success">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Completed {format(new Date(task.completed_at), 'MMM d, yyyy • h:mm a')}
                   </span>
                 )}
               </div>
