@@ -14,12 +14,12 @@ interface UsageModalProps {
 export function UsageModal({ open, onOpenChange }: UsageModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-lg mx-auto max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>How to Use & Keyboard Shortcuts</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 py-4 text-sm md:text-base">
           {/* Quick Start */}
           <section>
             <h3 className="font-semibold mb-2">Quick Start</h3>
@@ -41,7 +41,7 @@ export function UsageModal({ open, onOpenChange }: UsageModalProps) {
             {/* macOS */}
             <div className="mb-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">macOS</p>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center justify-between bg-muted/50 rounded px-3 py-2">
                   <span>New task</span>
                   <kbd className="px-2 py-0.5 bg-background border rounded text-xs font-mono">⌘ N</kbd>
@@ -60,7 +60,7 @@ export function UsageModal({ open, onOpenChange }: UsageModalProps) {
             {/* Windows / Linux */}
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Windows / Linux (Ubuntu)</p>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center justify-between bg-muted/50 rounded px-3 py-2">
                   <span>New task</span>
                   <kbd className="px-2 py-0.5 bg-background border rounded text-xs font-mono">Ctrl N</kbd>

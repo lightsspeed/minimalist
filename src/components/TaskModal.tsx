@@ -84,7 +84,7 @@ export function TaskModal({ open, onOpenChange, onSubmit, task, mode }: TaskModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {mode === 'add' ? 'Add New Task' : 'Edit Task'}
