@@ -26,24 +26,12 @@ interface SharedNote {
   created_at: string;
 }
 
-interface SharedNoteRpcResponse {
-  id: string;
-  task_id: string;
-  title: string;
-  description: string | null;
-  tags: string[] | null;
-  subtasks: SubtaskData[] | null;
-  password_hash: string;
-  expires_at: string | null;
-  created_at: string;
-}
-
 export default function SharedNote() {
   const { token } = useParams<{ token: string }>();
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [note, setNote] = useState<SharedNote | null>(null);
-  const [noteData, setNoteData] = useState<SharedNoteRpcResponse | null>(null);
+  const [noteExists, setNoteExists] = useState(false);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -60,17 +48,15 @@ export default function SharedNote() {
       return;
     }
 
-    // Use secure RPC function to fetch note by token
-    const { data, error } = await supabase.rpc('get_shared_note_by_token', {
+    // Use secure preview function - only returns id and created_at, no sensitive data
+    const { data, error } = await supabase.rpc('shared_note_preview', {
       p_share_token: token
     });
 
     if (error || !data || data.length === 0) {
       setNotFound(true);
     } else {
-      // Store the fetched data for password verification
-      const rawData = data[0] as unknown as SharedNoteRpcResponse;
-      setNoteData(rawData);
+      setNoteExists(true);
     }
     setLoading(false);
   };
@@ -97,16 +83,13 @@ export default function SharedNote() {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-      if (!noteData) {
-        toast({
-          title: 'Note not found',
-          description: 'This shared note may have been deleted.',
-          variant: 'destructive',
-        });
-        return;
-      }
+      // Use secure fetch function - verifies password server-side
+      const { data: noteData, error } = await supabase.rpc('fetch_shared_note', {
+        p_share_token: token,
+        p_password_hash: passwordHash
+      });
 
-      if (noteData.password_hash !== passwordHash) {
+      if (error || !noteData || noteData.length === 0) {
         toast({
           title: 'Incorrect password',
           description: 'The password you entered is incorrect.',
@@ -115,14 +98,25 @@ export default function SharedNote() {
         return;
       }
 
+      const fetchedNote = noteData[0] as unknown as {
+        id: string;
+        task_id: string;
+        title: string;
+        description: string | null;
+        tags: string[] | null;
+        subtasks: SubtaskData[] | null;
+        expires_at: string | null;
+        created_at: string;
+      };
+
       // Password correct - show note
       setNote({
-        id: noteData.id,
-        title: noteData.title,
-        description: noteData.description,
-        tags: noteData.tags || [],
-        subtasks: noteData.subtasks || [],
-        created_at: noteData.created_at,
+        id: fetchedNote.id,
+        title: fetchedNote.title,
+        description: fetchedNote.description,
+        tags: fetchedNote.tags || [],
+        subtasks: fetchedNote.subtasks || [],
+        created_at: fetchedNote.created_at,
       });
       setUnlocked(true);
     } catch (err) {

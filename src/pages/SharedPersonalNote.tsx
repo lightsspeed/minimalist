@@ -19,16 +19,12 @@ interface SharedNoteData {
   delete_after_reading: boolean;
 }
 
-interface SharedNoteRpcResponse {
+interface PreviewData {
   id: string;
-  note_id: string;
-  title: string;
-  content: string;
-  password_hash: string;
-  expires_at: string | null;
-  is_read: boolean;
-  delete_after_reading: boolean;
   created_at: string;
+  expires_at: string | null;
+  delete_after_reading: boolean;
+  is_read: boolean;
 }
 
 export default function SharedPersonalNote() {
@@ -36,7 +32,7 @@ export default function SharedPersonalNote() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [note, setNote] = useState<SharedNoteData | null>(null);
-  const [noteData, setNoteData] = useState<SharedNoteRpcResponse | null>(null);
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -54,8 +50,8 @@ export default function SharedPersonalNote() {
       return;
     }
 
-    // Use secure RPC function to fetch note by token
-    const { data, error } = await supabase.rpc('get_shared_personal_note_by_token', {
+    // Use secure preview function - only returns non-sensitive metadata
+    const { data, error } = await supabase.rpc('shared_personal_note_preview', {
       p_share_token: token
     });
 
@@ -65,23 +61,23 @@ export default function SharedPersonalNote() {
       return;
     }
 
-    const fetchedNote = data[0] as unknown as SharedNoteRpcResponse;
+    const preview = data[0] as unknown as PreviewData;
 
-    // Check if expired (already handled by function, but double-check)
-    if (fetchedNote.expires_at && new Date(fetchedNote.expires_at) < new Date()) {
+    // Check if expired
+    if (preview.expires_at && new Date(preview.expires_at) < new Date()) {
       setExpired(true);
       setLoading(false);
       return;
     }
 
     // Check if already read and delete_after_reading is true
-    if (fetchedNote.delete_after_reading && fetchedNote.is_read) {
+    if (preview.delete_after_reading && preview.is_read) {
       setNotFound(true);
       setLoading(false);
       return;
     }
 
-    setNoteData(fetchedNote);
+    setPreviewData(preview);
     setLoading(false);
   };
 
@@ -106,16 +102,13 @@ export default function SharedPersonalNote() {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-      if (!noteData) {
-        toast({
-          title: 'Note not found',
-          description: 'This shared note may have been deleted.',
-          variant: 'destructive',
-        });
-        return;
-      }
+      // Use secure fetch function - verifies password server-side
+      const { data: noteData, error } = await supabase.rpc('fetch_shared_personal_note', {
+        p_share_token: token,
+        p_password_hash: passwordHash
+      });
 
-      if (noteData.password_hash !== passwordHash) {
+      if (error || !noteData || noteData.length === 0) {
         toast({
           title: 'Incorrect password',
           description: 'The password you entered is incorrect.',
@@ -124,20 +117,31 @@ export default function SharedPersonalNote() {
         return;
       }
 
-      // Mark as read using secure RPC function if delete_after_reading
-      if (noteData.delete_after_reading && !noteData.is_read && token) {
+      const fetchedNote = noteData[0] as unknown as {
+        id: string;
+        note_id: string;
+        title: string;
+        content: string;
+        expires_at: string | null;
+        is_read: boolean;
+        delete_after_reading: boolean;
+        created_at: string;
+      };
+
+      // Mark as read if delete_after_reading
+      if (fetchedNote.delete_after_reading && !fetchedNote.is_read && token) {
         await supabase.rpc('mark_shared_note_as_read', {
           p_share_token: token
         });
       }
 
       setNote({
-        id: noteData.id,
-        title: noteData.title,
-        content: noteData.content,
-        created_at: noteData.created_at,
-        expires_at: noteData.expires_at,
-        delete_after_reading: noteData.delete_after_reading,
+        id: fetchedNote.id,
+        title: fetchedNote.title,
+        content: fetchedNote.content,
+        created_at: fetchedNote.created_at,
+        expires_at: fetchedNote.expires_at,
+        delete_after_reading: fetchedNote.delete_after_reading,
       });
       setUnlocked(true);
     } catch (err) {
