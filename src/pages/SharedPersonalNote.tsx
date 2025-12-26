@@ -19,11 +19,24 @@ interface SharedNoteData {
   delete_after_reading: boolean;
 }
 
+interface SharedNoteRpcResponse {
+  id: string;
+  note_id: string;
+  title: string;
+  content: string;
+  password_hash: string;
+  expires_at: string | null;
+  is_read: boolean;
+  delete_after_reading: boolean;
+  created_at: string;
+}
+
 export default function SharedPersonalNote() {
   const { token } = useParams<{ token: string }>();
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [note, setNote] = useState<SharedNoteData | null>(null);
+  const [noteData, setNoteData] = useState<SharedNoteRpcResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -41,32 +54,34 @@ export default function SharedPersonalNote() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from('shared_personal_notes')
-      .select('id, title, content, created_at, expires_at, delete_after_reading, password_hash, is_read')
-      .eq('share_token', token)
-      .maybeSingle();
+    // Use secure RPC function to fetch note by token
+    const { data, error } = await supabase.rpc('get_shared_personal_note_by_token', {
+      p_share_token: token
+    });
 
-    if (error || !data) {
+    if (error || !data || data.length === 0) {
       setNotFound(true);
       setLoading(false);
       return;
     }
 
-    // Check if expired
-    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+    const fetchedNote = data[0] as unknown as SharedNoteRpcResponse;
+
+    // Check if expired (already handled by function, but double-check)
+    if (fetchedNote.expires_at && new Date(fetchedNote.expires_at) < new Date()) {
       setExpired(true);
       setLoading(false);
       return;
     }
 
     // Check if already read and delete_after_reading is true
-    if (data.delete_after_reading && data.is_read) {
+    if (fetchedNote.delete_after_reading && fetchedNote.is_read) {
       setNotFound(true);
       setLoading(false);
       return;
     }
 
+    setNoteData(fetchedNote);
     setLoading(false);
   };
 
@@ -91,13 +106,7 @@ export default function SharedPersonalNote() {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-      const { data: noteData, error } = await supabase
-        .from('shared_personal_notes')
-        .select('id, title, content, created_at, expires_at, delete_after_reading, password_hash, is_read')
-        .eq('share_token', token)
-        .maybeSingle();
-
-      if (error || !noteData) {
+      if (!noteData) {
         toast({
           title: 'Note not found',
           description: 'This shared note may have been deleted.',
@@ -115,12 +124,11 @@ export default function SharedPersonalNote() {
         return;
       }
 
-      // Mark as read if delete_after_reading
-      if (noteData.delete_after_reading && !noteData.is_read) {
-        await supabase
-          .from('shared_personal_notes')
-          .update({ is_read: true })
-          .eq('id', noteData.id);
+      // Mark as read using secure RPC function if delete_after_reading
+      if (noteData.delete_after_reading && !noteData.is_read && token) {
+        await supabase.rpc('mark_shared_note_as_read', {
+          p_share_token: token
+        });
       }
 
       setNote({

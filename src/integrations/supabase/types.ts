@@ -280,7 +280,38 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_shared_note_by_token: {
+        Args: { p_share_token: string }
+        Returns: {
+          created_at: string
+          description: string
+          expires_at: string
+          id: string
+          password_hash: string
+          subtasks: Json
+          tags: string[]
+          task_id: string
+          title: string
+        }[]
+      }
+      get_shared_personal_note_by_token: {
+        Args: { p_share_token: string }
+        Returns: {
+          content: string
+          created_at: string
+          delete_after_reading: boolean
+          expires_at: string
+          id: string
+          is_read: boolean
+          note_id: string
+          password_hash: string
+          title: string
+        }[]
+      }
+      mark_shared_note_as_read: {
+        Args: { p_share_token: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
