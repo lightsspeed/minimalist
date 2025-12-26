@@ -26,11 +26,24 @@ interface SharedNote {
   created_at: string;
 }
 
+interface SharedNoteRpcResponse {
+  id: string;
+  task_id: string;
+  title: string;
+  description: string | null;
+  tags: string[] | null;
+  subtasks: SubtaskData[] | null;
+  password_hash: string;
+  expires_at: string | null;
+  created_at: string;
+}
+
 export default function SharedNote() {
   const { token } = useParams<{ token: string }>();
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [note, setNote] = useState<SharedNote | null>(null);
+  const [noteData, setNoteData] = useState<SharedNoteRpcResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -47,14 +60,17 @@ export default function SharedNote() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from('shared_notes')
-      .select('id, title, description, tags, subtasks, created_at, password_hash')
-      .eq('share_token', token)
-      .maybeSingle();
+    // Use secure RPC function to fetch note by token
+    const { data, error } = await supabase.rpc('get_shared_note_by_token', {
+      p_share_token: token
+    });
 
-    if (error || !data) {
+    if (error || !data || data.length === 0) {
       setNotFound(true);
+    } else {
+      // Store the fetched data for password verification
+      const rawData = data[0] as unknown as SharedNoteRpcResponse;
+      setNoteData(rawData);
     }
     setLoading(false);
   };
@@ -81,14 +97,7 @@ export default function SharedNote() {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-      // Fetch and verify
-      const { data: noteData, error } = await supabase
-        .from('shared_notes')
-        .select('id, title, description, tags, subtasks, created_at, password_hash')
-        .eq('share_token', token)
-        .maybeSingle();
-
-      if (error || !noteData) {
+      if (!noteData) {
         toast({
           title: 'Note not found',
           description: 'This shared note may have been deleted.',
@@ -112,7 +121,7 @@ export default function SharedNote() {
         title: noteData.title,
         description: noteData.description,
         tags: noteData.tags || [],
-        subtasks: (noteData.subtasks as unknown as SubtaskData[]) || [],
+        subtasks: noteData.subtasks || [],
         created_at: noteData.created_at,
       });
       setUnlocked(true);
