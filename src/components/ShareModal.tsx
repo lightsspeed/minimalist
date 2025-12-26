@@ -79,10 +79,10 @@ export function ShareModal({ open, onOpenChange, task }: ShareModalProps) {
       return;
     }
 
-    if (password.length < 4) {
+    if (password.length < 8) {
       toast({
         title: 'Password too short',
-        description: 'Password must be at least 4 characters.',
+        description: 'Password must be at least 8 characters.',
         variant: 'destructive',
       });
       return;
@@ -255,7 +255,7 @@ export function ShareModal({ open, onOpenChange, task }: ShareModalProps) {
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter password (min 4 characters)"
+                      placeholder="Enter password (min 8 characters)"
                       autoFocus
                     />
                     <Button
