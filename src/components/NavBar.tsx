@@ -42,20 +42,20 @@ export function NavBar() {
     <>
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
         <div className="container max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Link to="/" className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-shrink">
+            <Link to="/" className="flex items-center gap-2 min-w-0">
               <img 
                 src={logo} 
                 alt="Minimalist Logo" 
-                className="h-8 w-8 dark:brightness-0 dark:invert"
+                className="h-8 w-8 flex-shrink-0 dark:brightness-0 dark:invert"
               />
-              <h1 className="font-semibold text-lg">Minimalist</h1>
+              <h1 className="font-semibold text-lg truncate">Minimalist</h1>
             </Link>
           </div>
 
           {/* Mobile Navigation */}
           {isMobile ? (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
