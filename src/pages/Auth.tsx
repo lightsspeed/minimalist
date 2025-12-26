@@ -324,10 +324,24 @@ export default function Auth() {
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-primary/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2" />
 
-        {/* Theme toggle */}
-        <header className="absolute top-4 right-4 z-20">
+        {/* Mobile header with logo - visible only on mobile */}
+        <header className="lg:hidden relative z-20 flex items-center justify-between px-4 py-4">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-black/10 dark:bg-white/10 backdrop-blur-sm rounded-lg border border-black/10 dark:border-white/10">
+              <img src={logo} alt="Minimalist" className="h-6 w-auto dark:brightness-0 dark:invert" />
+            </div>
+            <div>
+              <span className="text-lg font-bold text-black dark:text-white">Minimalist</span>
+              <p className="text-xs text-black/50 dark:text-white/50 -mt-0.5">Task & Notes</p>
+            </div>
+          </div>
           <ThemeToggle />
         </header>
+
+        {/* Desktop theme toggle - hidden on mobile */}
+        <div className="hidden lg:block absolute top-4 right-4 z-20">
+          <ThemeToggle />
+        </div>
         
         <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-md animate-fade-in">
