@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -10,13 +11,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { TagBadge } from './TagBadge';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { Task } from '@/hooks/useTasks';
 
 interface TaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (title: string, description: string, tags: string[]) => Promise<void>;
+  onSubmit: (title: string, description: string, tags: string[], dueDate: Date | null) => Promise<void>;
   task?: Task | null;
   mode: 'add' | 'edit';
 }
@@ -26,6 +33,7 @@ export function TaskModal({ open, onOpenChange, onSubmit, task, mode }: TaskModa
   const [description, setDescription] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [dueDate, setDueDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -35,10 +43,12 @@ export function TaskModal({ open, onOpenChange, onSubmit, task, mode }: TaskModa
         setTitle(task.title);
         setDescription(task.description || '');
         setTags(task.tags);
+        setDueDate(task.due_date ? new Date(task.due_date) : null);
       } else {
         setTitle('');
         setDescription('');
         setTags([]);
+        setDueDate(null);
       }
       setTagInput('');
       setError('');
@@ -73,7 +83,7 @@ export function TaskModal({ open, onOpenChange, onSubmit, task, mode }: TaskModa
     setError('');
     
     try {
-      await onSubmit(title.trim(), description.trim(), tags);
+      await onSubmit(title.trim(), description.trim(), tags, dueDate);
       onOpenChange(false);
     } catch (err) {
       setError('Something went wrong');
@@ -112,6 +122,45 @@ export function TaskModal({ open, onOpenChange, onSubmit, task, mode }: TaskModa
               placeholder="Enter task description (optional)"
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Due Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dueDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dueDate ? format(dueDate, "PPP") : <span>Pick a due date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dueDate || undefined}
+                  onSelect={(date) => setDueDate(date || null)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            {dueDate && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => setDueDate(null)}
+              >
+                <X className="h-3 w-3 mr-1" />
+                Clear due date
+              </Button>
+            )}
           </div>
 
           <div className="space-y-2">

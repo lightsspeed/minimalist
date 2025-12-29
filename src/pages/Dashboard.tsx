@@ -177,11 +177,16 @@ export default function Dashboard() {
     }
   };
 
-  const handleTaskSubmit = async (title: string, description: string, tags: string[]) => {
+  const handleTaskSubmit = async (title: string, description: string, tags: string[], dueDate: Date | null) => {
     if (modalMode === 'add') {
-      await addTask(title, description, tags);
+      await addTask(title, description, tags, dueDate);
     } else if (selectedTask) {
-      await updateTask(selectedTask.id, { title, description, tags });
+      await updateTask(selectedTask.id, { 
+        title, 
+        description, 
+        tags,
+        due_date: dueDate ? dueDate.toISOString() : null
+      });
     }
   };
 
