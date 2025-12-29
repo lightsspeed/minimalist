@@ -29,6 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export default function Notes() {
   const { user, loading: authLoading } = useAuth();
@@ -272,9 +278,18 @@ export default function Notes() {
                           {note.is_pinned && (
                             <Pin className="h-3 w-3 text-primary flex-shrink-0" />
                           )}
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {note.content.split('\n')[0] || 'Untitled'}
-                          </p>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <p className="text-sm font-medium text-foreground line-clamp-2">
+                                  {note.content.split('\n')[0] || 'Untitled'}
+                                </p>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <p className="text-sm">{note.content.split('\n')[0] || 'Untitled'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                           {note.folder && (
