@@ -1,8 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ListTodo, CircleCheck, Clock, CalendarDays, Tag, BarChart3, Calendar } from 'lucide-react';
+import { ListTodo, CircleCheck, Clock, CalendarDays, BarChart3, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@/hooks/useAuth';
@@ -189,10 +188,10 @@ export default function Analytics() {
   const chartData = useMemo(() => {
     const now = new Date();
     
-    // Combine tasks and subtasks for chart (excluding templates)
-    const allItems = [
-      ...tasks.filter(t => !t.is_template).map(t => ({ created_at: t.created_at })),
-      ...subtasks.map(s => ({ created_at: s.created_at }))
+    // Combine completed tasks and subtasks for chart
+    const completedItems = [
+      ...tasks.filter(t => !t.is_template && t.is_completed).map(t => ({ completed_at: t.completed_at || t.created_at })),
+      ...subtasks.filter(s => s.is_completed).map(s => ({ completed_at: s.created_at }))
     ];
     
     switch (period) {
@@ -204,9 +203,9 @@ export default function Analytics() {
           const nextHour = new Date(hour);
           nextHour.setHours(hour.getHours() + 1);
           
-          const count = allItems.filter(item => {
-            const created = new Date(item.created_at);
-            return created >= hour && created < nextHour;
+          const count = completedItems.filter(item => {
+            const completed = new Date(item.completed_at);
+            return completed >= hour && completed < nextHour;
           }).length;
           
           data.push({ label: format(hour, 'ha'), count });
@@ -218,8 +217,8 @@ export default function Analytics() {
         for (let i = 6; i >= 0; i--) {
           const date = subDays(now, i);
           const dateStr = format(date, 'yyyy-MM-dd');
-          const count = allItems.filter(item => 
-            format(new Date(item.created_at), 'yyyy-MM-dd') === dateStr
+          const count = completedItems.filter(item => 
+            format(new Date(item.completed_at), 'yyyy-MM-dd') === dateStr
           ).length;
           data.push({ label: format(date, 'EEE'), count });
         }
@@ -231,9 +230,9 @@ export default function Analytics() {
           const weekStart = startOfWeek(subDays(now, i * 7));
           const weekEnd = subDays(startOfWeek(subDays(now, (i - 1) * 7)), 1);
           
-          const count = allItems.filter(item => {
-            const created = new Date(item.created_at);
-            return created >= weekStart && created <= (i === 0 ? now : weekEnd);
+          const count = completedItems.filter(item => {
+            const completed = new Date(item.completed_at);
+            return completed >= weekStart && completed <= (i === 0 ? now : weekEnd);
           }).length;
           
           data.push({ label: `Week ${4 - i}`, count });
@@ -246,9 +245,9 @@ export default function Analytics() {
           const monthStart = startOfMonth(subMonths(now, i));
           const monthEnd = i === 0 ? now : subDays(startOfMonth(subMonths(now, i - 1)), 1);
           
-          const count = allItems.filter(item => {
-            const created = new Date(item.created_at);
-            return created >= monthStart && created <= monthEnd;
+          const count = completedItems.filter(item => {
+            const completed = new Date(item.completed_at);
+            return completed >= monthStart && completed <= monthEnd;
           }).length;
           
           data.push({ label: format(monthStart, 'MMM'), count });
@@ -356,7 +355,7 @@ export default function Analytics() {
               </Card>
             </div>
 
-            {/* Completion Rate */}
+            {/* Completion Rate with Animated Progress */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-medium">Completion Rate</CardTitle>
@@ -369,7 +368,15 @@ export default function Analytics() {
                       <AnimatedNumber value={stats.completionRate} duration={1000} suffix="%" />
                     </span>
                   </div>
-                  <Progress value={stats.completionRate} className="h-2" />
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary rounded-full transition-all duration-1000 ease-out"
+                      style={{ 
+                        width: `${stats.completionRate}%`,
+                        animation: 'progressFill 1s ease-out forwards'
+                      }}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -395,12 +402,12 @@ export default function Analytics() {
                               {month.completed}/{month.total} completed
                             </span>
                           </div>
-                          <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3">
                             <div className="flex-1">
                               <div className="h-2 bg-muted rounded-full overflow-hidden">
                                 <div 
-                                  className="h-full bg-success rounded-full transition-all duration-500"
-                                  style={{ width: `${completionRate}%` }}
+                                  className="h-full bg-success rounded-full animate-progress-fill"
+                                  style={{ '--progress-width': `${completionRate}%` } as React.CSSProperties}
                                 />
                               </div>
                             </div>
@@ -414,13 +421,13 @@ export default function Analytics() {
               </Card>
             )}
 
-            {/* Tasks Chart with Time Period Tabs */}
+            {/* Items Completed Chart with Time Period Tabs */}
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <CardTitle className="text-base font-medium flex items-center gap-2">
                     <BarChart3 className="h-4 w-4" />
-                    Items Created
+                    Items Completed
                   </CardTitle>
                   <Tabs value={period} onValueChange={(v) => setPeriod(v as TimePeriod)}>
                     <TabsList className="h-8">
@@ -452,35 +459,6 @@ export default function Analytics() {
               </CardContent>
             </Card>
 
-            {/* Top Tags */}
-            {stats.topTags.length > 0 && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-medium flex items-center gap-2">
-                    <Tag className="h-4 w-4" />
-                    Top Tags
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {stats.topTags.map(([tag, count]) => (
-                      <div key={tag} className="flex items-center gap-3">
-                        <span className="text-sm font-medium min-w-[80px] truncate">{tag}</span>
-                        <div className="flex-1 h-2 bg-muted rounded overflow-hidden">
-                          <div
-                            className="h-full bg-primary rounded transition-all"
-                            style={{
-                              width: `${(count / stats.topTags[0][1]) * 100}%`,
-                            }}
-                          />
-                        </div>
-                        <span className="text-sm text-muted-foreground w-8 text-right">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
         )}
       </main>

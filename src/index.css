@@ -130,4 +130,17 @@
     animation: shimmer 15s linear infinite;
     background-size: 200% 200%;
   }
+
+  @keyframes progressFill {
+    from {
+      width: 0%;
+    }
+    to {
+      width: var(--progress-width, 100%);
+    }
+  }
+
+  .animate-progress-fill {
+    animation: progressFill 1s ease-out forwards;
+  }
 }
