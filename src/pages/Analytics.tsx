@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
 import { subDays, subMonths, isAfter, format, startOfWeek, startOfMonth, getMonth, getYear } from 'date-fns';
+import { AnimatedNumber } from '@/components/AnimatedNumber';
 
 type TimePeriod = 'day' | 'week' | 'month' | 'year';
 
@@ -291,12 +292,14 @@ export default function Analytics() {
                       <ListTodo className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{stats.total}</p>
+                      <p className="text-2xl font-bold">
+                        <AnimatedNumber value={stats.total} duration={800} />
+                      </p>
                       <p className="text-xs text-muted-foreground">Total Items</p>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2 ml-12">
-                    {stats.totalTasks} tasks · {stats.totalSubtasks} subtasks
+                    <AnimatedNumber value={stats.totalTasks} duration={800} delay={100} /> tasks · <AnimatedNumber value={stats.totalSubtasks} duration={800} delay={100} /> subtasks
                   </p>
                 </CardContent>
               </Card>
@@ -308,12 +311,14 @@ export default function Analytics() {
                       <CircleCheck className="h-5 w-5 text-success" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{stats.completed}</p>
+                      <p className="text-2xl font-bold">
+                        <AnimatedNumber value={stats.completed} duration={800} delay={100} />
+                      </p>
                       <p className="text-xs text-muted-foreground">Completed</p>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2 ml-12">
-                    {stats.completedTasks} tasks · {stats.completedSubtasks} subtasks
+                    <AnimatedNumber value={stats.completedTasks} duration={800} delay={200} /> tasks · <AnimatedNumber value={stats.completedSubtasks} duration={800} delay={200} /> subtasks
                   </p>
                 </CardContent>
               </Card>
@@ -325,7 +330,9 @@ export default function Analytics() {
                       <Clock className="h-5 w-5 text-accent-foreground" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{stats.pending}</p>
+                      <p className="text-2xl font-bold">
+                        <AnimatedNumber value={stats.pending} duration={800} delay={200} />
+                      </p>
                       <p className="text-xs text-muted-foreground">Pending</p>
                     </div>
                   </div>
@@ -339,7 +346,9 @@ export default function Analytics() {
                       <CalendarDays className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{stats.last7Days}</p>
+                      <p className="text-2xl font-bold">
+                        <AnimatedNumber value={stats.last7Days} duration={800} delay={300} />
+                      </p>
                       <p className="text-xs text-muted-foreground">Last 7 days</p>
                     </div>
                   </div>
@@ -356,7 +365,9 @@ export default function Analytics() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Progress</span>
-                    <span className="font-medium">{stats.completionRate}%</span>
+                    <span className="font-medium">
+                      <AnimatedNumber value={stats.completionRate} duration={1000} suffix="%" />
+                    </span>
                   </div>
                   <Progress value={stats.completionRate} className="h-2" />
                 </div>
