@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.verify-shared-note]
 verify_jwt = false
+
+[functions.metrics]
+verify_jwt = false

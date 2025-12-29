@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_metrics: {
+        Row: {
+          id: string
+          labels: Json | null
+          metric_name: string
+          metric_value: number
+          recorded_at: string
+        }
+        Insert: {
+          id?: string
+          labels?: Json | null
+          metric_name: string
+          metric_value?: number
+          recorded_at?: string
+        }
+        Update: {
+          id?: string
+          labels?: Json | null
+          metric_name?: string
+          metric_value?: number
+          recorded_at?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           attachments: Json | null
@@ -305,6 +329,36 @@ export type Database = {
     }
     Functions: {
       cleanup_old_access_attempts: { Args: never; Returns: undefined }
+      get_aggregated_metrics: {
+        Args: never
+        Returns: {
+          count: number
+          labels: Json
+          metric_name: string
+          total_value: number
+        }[]
+      }
+      get_database_stats: {
+        Args: never
+        Returns: {
+          row_count: number
+          table_name: string
+        }[]
+      }
+      get_user_activity_stats: {
+        Args: never
+        Returns: {
+          active_users_today: number
+          notes_created_today: number
+          tasks_completed_today: number
+          tasks_created_today: number
+          total_users: number
+        }[]
+      }
+      increment_metric: {
+        Args: { p_increment?: number; p_labels?: Json; p_metric_name: string }
+        Returns: undefined
+      }
       mark_shared_note_as_read: {
         Args: { p_share_token: string }
         Returns: boolean
