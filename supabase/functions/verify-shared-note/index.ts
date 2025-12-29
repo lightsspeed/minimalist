@@ -7,6 +7,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-forwarded-for',
 };
 
+// Helper to record metrics
+async function recordMetric(
+  supabase: SupabaseClient,
+  metricName: string,
+  labels: Record<string, string> = {},
+  value: number = 1
+): Promise<void> {
+  try {
+    await supabase.rpc('increment_metric', {
+      p_metric_name: metricName,
+      p_labels: labels,
+      p_increment: value
+    });
+  } catch (error) {
+    console.error('Error recording metric:', error);
+  }
+}
+
 // Rate limiting configuration
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
@@ -117,11 +135,18 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const startTime = Date.now();
+
+    // Record API request metric
+    await recordMetric(supabase, 'api_requests_total', { endpoint: 'verify-shared-note', note_type });
+
     // Check rate limit before attempting verification
     const rateLimit = await checkRateLimit(supabase, share_token, ipAddress);
     
     if (!rateLimit.allowed) {
       console.log(`Rate limit exceeded for token: ${share_token.substring(0, 8)}...`);
+      await recordMetric(supabase, 'rate_limit_exceeded_total', { endpoint: 'verify-shared-note' });
+      
       const lockoutMessage = rateLimit.lockoutUntil 
         ? `Too many failed attempts. Please try again after ${rateLimit.lockoutUntil.toISOString()}`
         : `Too many failed attempts. Please try again in ${LOCKOUT_DURATION_MINUTES} minutes.`;
@@ -168,6 +193,7 @@ serve(async (req) => {
       
       if (!isValid) {
         console.log('Password verification failed');
+        await recordMetric(supabase, 'password_verification_failed_total', { note_type: 'task' });
         const newRateLimit = await checkRateLimit(supabase, share_token, ipAddress);
         return new Response(
           JSON.stringify({ 
@@ -180,6 +206,11 @@ serve(async (req) => {
 
       // Clear failed attempts on success
       await clearFailedAttempts(supabase, share_token);
+      await recordMetric(supabase, 'password_verification_success_total', { note_type: 'task' });
+
+      // Record response time
+      const duration = (Date.now() - startTime) / 1000;
+      await recordMetric(supabase, 'api_request_duration_seconds', { endpoint: 'verify-shared-note', note_type: 'task' }, duration);
 
       // Return note data without password_hash
       const { password_hash, ...safeNoteData } = noteData;
@@ -228,6 +259,7 @@ serve(async (req) => {
       
       if (!isValid) {
         console.log('Password verification failed');
+        await recordMetric(supabase, 'password_verification_failed_total', { note_type: 'personal' });
         const newRateLimit = await checkRateLimit(supabase, share_token, ipAddress);
         return new Response(
           JSON.stringify({ 
@@ -240,6 +272,7 @@ serve(async (req) => {
 
       // Clear failed attempts on success
       await clearFailedAttempts(supabase, share_token);
+      await recordMetric(supabase, 'password_verification_success_total', { note_type: 'personal' });
 
       // Mark as read if delete_after_reading (handled here after password verification)
       if (noteData.delete_after_reading && !noteData.is_read) {
@@ -254,6 +287,10 @@ serve(async (req) => {
           .delete()
           .eq('id', noteData.id);
       }
+
+      // Record response time
+      const duration = (Date.now() - startTime) / 1000;
+      await recordMetric(supabase, 'api_request_duration_seconds', { endpoint: 'verify-shared-note', note_type: 'personal' }, duration);
 
       // Return note data without password_hash
       const { password_hash, ...safeNoteData } = noteData;
