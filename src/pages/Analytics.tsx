@@ -2,7 +2,8 @@ import { useMemo, useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { 
   ListTodo, CircleCheck, Clock, CalendarDays, BarChart3, AlertTriangle,
-  TrendingUp, TrendingDown, Flame, Plus, Target, Play, Calendar, Focus
+  TrendingUp, TrendingDown, Flame, Plus, Target, Calendar, ChevronDown, ChevronUp,
+  PartyPopper, Zap, Trophy
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,7 +15,8 @@ import { useTasks } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   subDays, subMonths, isAfter, isBefore, format, startOfWeek, startOfMonth, 
-  getMonth, getYear, differenceInDays, startOfDay, endOfDay
+  getMonth, getYear, differenceInDays, startOfDay, endOfDay, isToday, isFriday,
+  getDay
 } from 'date-fns';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
 
@@ -27,10 +29,13 @@ interface Subtask {
   created_at: string;
 }
 
-interface OverdueTask {
+interface TaskWithUrgency {
   id: string;
   title: string;
-  daysOverdue: number;
+  due_date: string | null;
+  is_completed: boolean;
+  urgency: 'overdue' | 'today' | 'week' | 'upcoming' | 'none';
+  daysInfo: string;
 }
 
 export default function Analytics() {
@@ -39,6 +44,7 @@ export default function Analytics() {
   const [period, setPeriod] = useState<TimePeriod>('week');
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [subtasksLoading, setSubtasksLoading] = useState(true);
+  const [showAllPending, setShowAllPending] = useState(false);
 
   // Fetch all subtasks
   useEffect(() => {
@@ -74,18 +80,93 @@ export default function Analytics() {
     }
   }, [user, tasks, tasksLoading]);
 
-  // Overdue tasks
-  const overdueTasks = useMemo((): OverdueTask[] => {
+  // Tasks with urgency classification
+  const tasksWithUrgency = useMemo((): TaskWithUrgency[] => {
     const now = new Date();
+    const todayEnd = endOfDay(now);
+    const weekEnd = subDays(startOfWeek(now), -7);
+
     return tasks
-      .filter(t => !t.is_template && !t.is_completed && t.due_date && isBefore(new Date(t.due_date), now))
-      .map(t => ({
-        id: t.id,
-        title: t.title,
-        daysOverdue: differenceInDays(now, new Date(t.due_date!))
-      }))
-      .sort((a, b) => b.daysOverdue - a.daysOverdue)
-      .slice(0, 5);
+      .filter(t => !t.is_template && !t.is_completed)
+      .map(t => {
+        let urgency: TaskWithUrgency['urgency'] = 'none';
+        let daysInfo = '';
+
+        if (t.due_date) {
+          const dueDate = new Date(t.due_date);
+          if (isBefore(dueDate, now)) {
+            urgency = 'overdue';
+            const days = differenceInDays(now, dueDate);
+            daysInfo = `${days} day${days > 1 ? 's' : ''} overdue`;
+          } else if (isToday(dueDate)) {
+            urgency = 'today';
+            daysInfo = 'Due today';
+          } else if (isBefore(dueDate, weekEnd)) {
+            urgency = 'week';
+            const days = differenceInDays(dueDate, now);
+            daysInfo = `Due in ${days} day${days > 1 ? 's' : ''}`;
+          } else {
+            urgency = 'upcoming';
+            daysInfo = format(dueDate, 'MMM d');
+          }
+        }
+
+        return {
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          is_completed: t.is_completed,
+          urgency,
+          daysInfo
+        };
+      })
+      .sort((a, b) => {
+        const order = { overdue: 0, today: 1, week: 2, upcoming: 3, none: 4 };
+        return order[a.urgency] - order[b.urgency];
+      });
+  }, [tasks]);
+
+  // Weekly Review data
+  const weeklyReview = useMemo(() => {
+    const now = new Date();
+    const weekStart = startOfWeek(now);
+    const lastWeekStart = subDays(weekStart, 7);
+    
+    // Completed this week
+    const completedThisWeek = tasks.filter(t => 
+      t.completed_at && isAfter(new Date(t.completed_at), weekStart) && !t.is_template
+    );
+    
+    // Carried over (created before this week, not completed)
+    const carriedOver = tasks.filter(t => 
+      !t.is_completed && 
+      !t.is_template && 
+      isBefore(new Date(t.created_at), weekStart)
+    ).length;
+
+    // Most productive day
+    const dayCompletions: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+    completedThisWeek.forEach(t => {
+      const day = getDay(new Date(t.completed_at!));
+      dayCompletions[day]++;
+    });
+    const maxDay = Object.entries(dayCompletions).reduce((a, b) => 
+      b[1] > a[1] ? b : a, ['0', 0]
+    );
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const mostProductiveDay = dayCompletions[parseInt(maxDay[0])] > 0 ? dayNames[parseInt(maxDay[0])] : null;
+
+    // Top achievement (longest task title completed, as proxy)
+    const topAchievement = completedThisWeek.length > 0 
+      ? completedThisWeek.sort((a, b) => b.title.length - a.title.length)[0]?.title
+      : null;
+
+    return {
+      completed: completedThisWeek.length,
+      carriedOver,
+      mostProductiveDay,
+      topAchievement: topAchievement?.slice(0, 30) + (topAchievement && topAchievement.length > 30 ? '...' : '')
+    };
   }, [tasks]);
 
   // Today & This Week stats
@@ -95,41 +176,24 @@ export default function Analytics() {
     const weekStart = startOfWeek(now);
     const lastWeekStart = subDays(weekStart, 7);
 
-    // Today's tasks
-    const todayTasks = tasks.filter(t => !t.is_template);
-    const todayCompleted = todayTasks.filter(t => 
-      t.completed_at && isAfter(new Date(t.completed_at), todayStart)
+    const todayCompleted = tasks.filter(t => 
+      !t.is_template && t.completed_at && isAfter(new Date(t.completed_at), todayStart)
     ).length;
-    const todayTotal = todayTasks.filter(t => 
-      isAfter(new Date(t.created_at), todayStart) || 
-      (t.due_date && format(new Date(t.due_date), 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd'))
-    ).length || todayCompleted + todayTasks.filter(t => !t.is_completed).length;
-    const todayRemaining = Math.max(0, todayTotal - todayCompleted);
 
-    // This week's tasks
-    const weekTasks = tasks.filter(t => !t.is_template);
-    const weekCompleted = weekTasks.filter(t => 
-      t.completed_at && isAfter(new Date(t.completed_at), weekStart)
+    const weekCompleted = tasks.filter(t => 
+      !t.is_template && t.completed_at && isAfter(new Date(t.completed_at), weekStart)
     ).length;
-    const weekTotal = weekTasks.filter(t => 
-      isAfter(new Date(t.created_at), weekStart)
-    ).length || weekCompleted;
 
-    // Last week comparison
-    const lastWeekCompleted = weekTasks.filter(t => 
-      t.completed_at && 
+    const lastWeekCompleted = tasks.filter(t => 
+      !t.is_template && t.completed_at && 
       isAfter(new Date(t.completed_at), lastWeekStart) && 
       isBefore(new Date(t.completed_at), weekStart)
     ).length;
-    const weekDiff = weekCompleted - lastWeekCompleted;
 
     return {
       todayCompleted,
-      todayTotal: Math.max(todayTotal, todayCompleted),
-      todayRemaining,
       weekCompleted,
-      weekTotal: Math.max(weekTotal, weekCompleted),
-      weekDiff
+      weekDiff: weekCompleted - lastWeekCompleted
     };
   }, [tasks]);
 
@@ -156,17 +220,6 @@ export default function Analytics() {
     return currentStreak;
   }, [tasks]);
 
-  // Weekly priorities (pinned or due this week)
-  const weeklyPriorities = useMemo(() => {
-    const weekEnd = subDays(startOfWeek(new Date()), -7);
-    return tasks
-      .filter(t => !t.is_template && !t.is_completed && (
-        t.is_pinned || 
-        (t.due_date && isBefore(new Date(t.due_date), weekEnd))
-      ))
-      .slice(0, 5);
-  }, [tasks]);
-
   const stats = useMemo(() => {
     const totalTasks = tasks.filter(t => !t.is_template).length;
     const totalSubtasks = subtasks.length;
@@ -176,34 +229,12 @@ export default function Analytics() {
     const completedSubtasks = subtasks.filter(s => s.is_completed).length;
     const completed = completedTasks + completedSubtasks;
 
-    // Separate to-do and in-progress (not completed)
-    const incompleteTasks = tasks.filter(t => !t.is_completed && !t.is_template);
-    const toDo = incompleteTasks.length; // All incomplete are "to do" for now
-    
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const toDo = tasks.filter(t => !t.is_completed && !t.is_template).length;
 
-    const last7DaysTasks = tasks.filter(t => 
-      !t.is_template && isAfter(new Date(t.created_at), subDays(new Date(), 7))
-    ).length;
-    const last7DaysSubtasks = subtasks.filter(s => 
-      isAfter(new Date(s.created_at), subDays(new Date(), 7))
-    ).length;
-    const last7Days = last7DaysTasks + last7DaysSubtasks;
-
-    return { 
-      total, 
-      totalTasks, 
-      totalSubtasks, 
-      completed, 
-      completedTasks,
-      completedSubtasks,
-      toDo,
-      completionRate, 
-      last7Days
-    };
+    return { total, completed, toDo };
   }, [tasks, subtasks]);
 
-  // Weekly completion trend (last 4 weeks)
+  // Weekly completion trend
   const weeklyTrend = useMemo(() => {
     const now = new Date();
     const weeks: { label: string; completed: number }[] = [];
@@ -222,11 +253,9 @@ export default function Analytics() {
     }
     
     const avgCompleted = weeks.reduce((sum, w) => sum + w.completed, 0) / weeks.length;
-    const prevAvg = (weeks[0].completed + weeks[1].completed) / 2;
-    const currAvg = (weeks[2].completed + weeks[3].completed) / 2;
-    const trend = currAvg - prevAvg;
+    const trend = weeks[3].completed - weeks[2].completed;
     
-    return { weeks, avgCompleted: Math.round(avgCompleted * 10) / 10, trend: Math.round(trend * 10) / 10 };
+    return { weeks, avgCompleted: Math.round(avgCompleted * 10) / 10, trend };
   }, [tasks]);
 
   const chartData = useMemo(() => {
@@ -302,6 +331,33 @@ export default function Analytics() {
 
   const maxCount = Math.max(...chartData.map(d => d.count), 1);
 
+  // Urgency colors
+  const getUrgencyStyles = (urgency: TaskWithUrgency['urgency']) => {
+    switch (urgency) {
+      case 'overdue':
+        return 'border-l-4 border-l-destructive bg-destructive/5';
+      case 'today':
+        return 'border-l-4 border-l-orange-500 bg-orange-500/5';
+      case 'week':
+        return 'border-l-4 border-l-yellow-500 bg-yellow-500/5';
+      default:
+        return 'border-l-4 border-l-muted';
+    }
+  };
+
+  const getUrgencyBadge = (urgency: TaskWithUrgency['urgency']) => {
+    switch (urgency) {
+      case 'overdue':
+        return <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">Overdue</span>;
+      case 'today':
+        return <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 font-medium">Today</span>;
+      case 'week':
+        return <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 font-medium">This week</span>;
+      default:
+        return null;
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -315,6 +371,10 @@ export default function Analytics() {
   }
 
   const isLoading = tasksLoading || subtasksLoading;
+  const overdueTasks = tasksWithUrgency.filter(t => t.urgency === 'overdue');
+  const todayTasks = tasksWithUrgency.filter(t => t.urgency === 'today');
+  const needsAttention = [...overdueTasks, ...todayTasks];
+  const displayedPending = showAllPending ? tasksWithUrgency : tasksWithUrgency.slice(0, 3);
 
   return (
     <div className="min-h-screen bg-background transition-theme">
@@ -324,273 +384,242 @@ export default function Analytics() {
         {isLoading ? (
           <div className="text-center py-12 text-muted-foreground">Loading analytics...</div>
         ) : (
-          <div className="space-y-6">
-            {/* Overdue Tasks Alert */}
+          <div className="space-y-4">
+            {/* Overdue Alert - Large & Prominent */}
             {overdueTasks.length > 0 && (
-              <Card className="border-destructive/50 bg-destructive/5">
-                <CardContent className="pt-4 pb-3">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-destructive/10 rounded-lg">
-                      <AlertTriangle className="h-5 w-5 text-destructive" />
+              <Card className="border-2 border-destructive/50 bg-destructive/5 shadow-lg">
+                <CardContent className="py-4">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-destructive/20 rounded-xl shrink-0">
+                      <AlertTriangle className="h-6 w-6 text-destructive" />
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-destructive mb-2">
-                        {overdueTasks.length} Overdue Task{overdueTasks.length > 1 ? 's' : ''}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-bold text-destructive mb-1">
+                        {overdueTasks.length} task{overdueTasks.length > 1 ? 's' : ''} need{overdueTasks.length === 1 ? 's' : ''} your attention!
                       </h3>
-                      <ul className="space-y-1 text-sm">
-                        {overdueTasks.map(task => (
-                          <li key={task.id} className="flex items-center gap-2 text-muted-foreground">
-                            <span className="truncate flex-1">{task.title}</span>
+                      <ul className="space-y-2 mt-3">
+                        {overdueTasks.slice(0, 3).map(task => (
+                          <li key={task.id} className={`flex items-center gap-3 p-2 rounded-lg ${getUrgencyStyles(task.urgency)}`}>
+                            <span className="flex-1 truncate font-medium">{task.title}</span>
                             <span className="text-xs text-destructive font-medium whitespace-nowrap">
-                              {task.daysOverdue} day{task.daysOverdue > 1 ? 's' : ''} ago
+                              {task.daysInfo}
                             </span>
                           </li>
                         ))}
                       </ul>
-                      <Link to="/" className="text-xs text-primary hover:underline mt-2 inline-block">
-                        View All →
-                      </Link>
+                      {overdueTasks.length > 3 && (
+                        <Link to="/" className="text-sm text-destructive hover:underline mt-3 inline-flex items-center gap-1">
+                          +{overdueTasks.length - 3} more overdue →
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            {/* Quick Stats with Context */}
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="hover:bg-hover-blue transition-colors">
-                <CardContent className="pt-5 pb-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2.5 bg-primary/10 rounded-xl">
-                      <Target className="h-5 w-5 text-primary" />
+            {/* Action-Oriented Stats Row */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Today's Progress */}
+              <Card className={`${quickStats.todayCompleted > 0 ? 'bg-success/5 border-success/30' : 'bg-muted/30'}`}>
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    {quickStats.todayCompleted > 0 ? (
+                      <PartyPopper className="h-8 w-8 text-success" />
+                    ) : (
+                      <Zap className="h-8 w-8 text-muted-foreground" />
+                    )}
+                    <div>
+                      {quickStats.todayCompleted > 0 ? (
+                        <>
+                          <p className="text-lg font-bold text-success">
+                            Great job! <AnimatedNumber value={quickStats.todayCompleted} duration={600} /> done today
+                          </p>
+                          <p className="text-xs text-muted-foreground">Keep the momentum going</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-lg font-bold text-muted-foreground">
+                            Ready to start?
+                          </p>
+                          <p className="text-xs text-muted-foreground">Complete your first task today</p>
+                        </>
+                      )}
                     </div>
-                    <span className="text-sm font-medium text-muted-foreground">Today</span>
                   </div>
-                  <p className="text-2xl font-bold mb-1">
-                    <AnimatedNumber value={quickStats.todayCompleted} duration={800} />
-                    <span className="text-muted-foreground font-normal">/{quickStats.todayTotal}</span>
-                    <span className="text-sm font-normal text-muted-foreground ml-1">completed</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {quickStats.todayRemaining} remaining
-                  </p>
                 </CardContent>
               </Card>
 
-              <Card className="hover:bg-hover-blue transition-colors">
-                <CardContent className="pt-5 pb-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2.5 bg-success/10 rounded-xl">
-                      <TrendingUp className="h-5 w-5 text-success" />
+              {/* Week Progress */}
+              <Card className={`${quickStats.weekCompleted > 0 ? 'bg-primary/5 border-primary/30' : 'bg-muted/30'}`}>
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    <Trophy className="h-8 w-8 text-primary" />
+                    <div>
+                      <p className="text-lg font-bold">
+                        <AnimatedNumber value={quickStats.weekCompleted} duration={600} /> this week
+                      </p>
+                      <p className="text-xs flex items-center gap-1">
+                        {quickStats.weekDiff >= 0 ? (
+                          <TrendingUp className="h-3 w-3 text-success" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3 text-destructive" />
+                        )}
+                        <span className={quickStats.weekDiff >= 0 ? 'text-success' : 'text-destructive'}>
+                          {quickStats.weekDiff >= 0 ? '+' : ''}{quickStats.weekDiff}
+                        </span>
+                        <span className="text-muted-foreground">vs last week</span>
+                      </p>
                     </div>
-                    <span className="text-sm font-medium text-muted-foreground">This Week</span>
                   </div>
-                  <p className="text-2xl font-bold mb-1">
-                    <AnimatedNumber value={quickStats.weekCompleted} duration={800} />
-                    <span className="text-muted-foreground font-normal">/{quickStats.weekTotal}</span>
-                    <span className="text-sm font-normal text-muted-foreground ml-1">completed</span>
-                  </p>
-                  <p className="text-xs flex items-center gap-1">
-                    {quickStats.weekDiff >= 0 ? (
-                      <TrendingUp className="h-3 w-3 text-success" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3 text-destructive" />
-                    )}
-                    <span className={quickStats.weekDiff >= 0 ? 'text-success' : 'text-destructive'}>
-                      {quickStats.weekDiff >= 0 ? '+' : ''}{quickStats.weekDiff}
-                    </span>
-                    <span className="text-muted-foreground">from last week</span>
-                  </p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Productivity Streak */}
+            {/* Productivity Streak - Compact */}
             {streak > 0 && (
               <Card className="bg-gradient-to-r from-orange-500/10 to-yellow-500/10 border-orange-500/20">
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-orange-500/20 rounded-xl">
-                      <Flame className="h-6 w-6 text-orange-500" />
-                    </div>
+                <CardContent className="py-3">
+                  <div className="flex items-center gap-3">
+                    <Flame className="h-6 w-6 text-orange-500" />
                     <div className="flex-1">
-                      <p className="text-lg font-bold text-foreground">
-                        {streak} Day Streak
-                      </p>
-                      <div className="mt-2">
-                        <Progress value={(streak / 14) * 100} className="h-2" />
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-foreground">{streak} Day Streak</span>
+                        <span className="text-xs text-muted-foreground">
+                          {streak < 7 ? `${7 - streak} more for weekly badge` : streak < 14 ? `${14 - streak} more for 2-week badge` : 'Amazing!'}
+                        </span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {streak < 14 
-                          ? `${14 - streak} more days for 2-week streak!` 
-                          : 'Amazing streak! Keep it going!'}
-                      </p>
+                      <Progress value={(streak / 14) * 100} className="h-1.5 mt-1" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            {/* Quick Actions Bar */}
-            <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" size="sm" className="gap-2">
-                <Link to="/">
-                  <Plus className="h-4 w-4" />
-                  New Task
-                </Link>
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2" disabled>
-                <Play className="h-4 w-4" />
-                Start Timer
-              </Button>
-              <Button asChild variant="outline" size="sm" className="gap-2">
-                <Link to="/archive">
+            {/* Weekly Review Card */}
+            <Card className="bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-medium flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  View Archive
-                </Link>
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2" disabled>
-                <Focus className="h-4 w-4" />
-                Focus Mode
-              </Button>
-            </div>
-
-            {/* Overview Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="hover:bg-hover-blue transition-colors">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-primary/10 rounded-xl">
-                      <ListTodo className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">
-                        <AnimatedNumber value={stats.total} duration={800} />
-                      </p>
-                      <p className="text-xs text-muted-foreground">Total Items</p>
-                    </div>
+                  Week in Review
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="text-center p-2 rounded-lg bg-background/50">
+                    <p className="text-2xl font-bold text-success">
+                      <AnimatedNumber value={weeklyReview.completed} duration={600} />
+                    </p>
+                    <p className="text-xs text-muted-foreground">Completed</p>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:bg-hover-blue transition-colors">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-success/10 rounded-xl">
-                      <CircleCheck className="h-5 w-5 text-success" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">
-                        <AnimatedNumber value={stats.completed} duration={800} delay={100} />
-                      </p>
-                      <p className="text-xs text-muted-foreground">Completed</p>
-                    </div>
+                  <div className="text-center p-2 rounded-lg bg-background/50">
+                    <p className="text-2xl font-bold text-orange-500">
+                      <AnimatedNumber value={weeklyReview.carriedOver} duration={600} />
+                    </p>
+                    <p className="text-xs text-muted-foreground">Carried over</p>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:bg-hover-blue transition-colors">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-accent rounded-xl">
-                      <Clock className="h-5 w-5 text-accent-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">
-                        <AnimatedNumber value={stats.toDo} duration={800} delay={200} />
-                      </p>
-                      <p className="text-xs text-muted-foreground">To Do</p>
-                    </div>
+                  <div className="text-center p-2 rounded-lg bg-background/50">
+                    <p className="text-sm font-bold text-foreground truncate">
+                      {weeklyReview.mostProductiveDay || '—'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Most productive</p>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:bg-hover-blue transition-colors">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-primary/10 rounded-xl">
-                      <CalendarDays className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">
-                        <AnimatedNumber value={stats.last7Days} duration={800} delay={300} />
-                      </p>
-                      <p className="text-xs text-muted-foreground">Last 7 days</p>
-                    </div>
+                  <div className="text-center p-2 rounded-lg bg-background/50">
+                    <p className="text-sm font-medium text-foreground truncate" title={weeklyReview.topAchievement || ''}>
+                      {weeklyReview.topAchievement || '—'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Top achievement</p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+                <Button asChild variant="outline" size="sm" className="w-full mt-3">
+                  <Link to="/">
+                    Start Next Week Planning →
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
 
-            {/* This Week's Priorities */}
-            {weeklyPriorities.length > 0 && (
+            {/* Tasks Needing Attention - Progressive Disclosure */}
+            {tasksWithUrgency.length > 0 && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-medium flex items-center gap-2">
                     <Target className="h-4 w-4" />
-                    This Week's Priorities
+                    {needsAttention.length > 0 
+                      ? `${needsAttention.length} task${needsAttention.length > 1 ? 's' : ''} need${needsAttention.length === 1 ? 's' : ''} attention`
+                      : `${stats.toDo} pending task${stats.toDo > 1 ? 's' : ''}`
+                    }
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
-                    {weeklyPriorities.map(task => (
-                      <li key={task.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="w-5 h-5 rounded border-2 border-muted-foreground/30" />
-                        <span className="flex-1 text-sm truncate">{task.title}</span>
-                        {task.due_date && (
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(task.due_date), 'MMM d')}
+                    {displayedPending.map(task => (
+                      <li 
+                        key={task.id} 
+                        className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${getUrgencyStyles(task.urgency)}`}
+                      >
+                        <div className="w-4 h-4 rounded border-2 border-muted-foreground/30 shrink-0" />
+                        <span className="flex-1 text-sm truncate font-medium">{task.title}</span>
+                        {getUrgencyBadge(task.urgency)}
+                        {task.daysInfo && task.urgency !== 'overdue' && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {task.daysInfo}
                           </span>
                         )}
                       </li>
                     ))}
                   </ul>
-                  <Button asChild variant="ghost" size="sm" className="w-full mt-3 text-muted-foreground">
-                    <Link to="/">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Priority
-                    </Link>
-                  </Button>
+                  
+                  {tasksWithUrgency.length > 3 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full mt-3 text-muted-foreground"
+                      onClick={() => setShowAllPending(!showAllPending)}
+                    >
+                      {showAllPending ? (
+                        <>
+                          <ChevronUp className="h-4 w-4 mr-1" />
+                          Show less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4 mr-1" />
+                          Show all {tasksWithUrgency.length} pending tasks
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             )}
 
-            {/* Completion Rate */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base font-medium">Completion Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span className="font-medium">
-                      <AnimatedNumber value={stats.completionRate} duration={1000} suffix="%" />
-                    </span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary rounded-full transition-all duration-1000 ease-out"
-                      style={{ 
-                        width: `${stats.completionRate}%`,
-                        animation: 'progressFill 1s ease-out forwards'
-                      }}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Quick Actions */}
+            <div className="flex gap-2">
+              <Button asChild variant="default" size="sm" className="gap-2 flex-1">
+                <Link to="/">
+                  <Plus className="h-4 w-4" />
+                  New Task
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="gap-2 flex-1">
+                <Link to="/archive">
+                  <CircleCheck className="h-4 w-4" />
+                  View Completed
+                </Link>
+              </Button>
+            </div>
 
-            {/* Completion Trend (replaces Monthly Breakdown) */}
+            {/* Completion Trend */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-medium flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
-                  Completion Trend (Last 30 Days)
+                  Completion Trend
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-end justify-between gap-2 h-24 mb-4">
+                <div className="flex items-end justify-between gap-2 h-20 mb-3">
                   {weeklyTrend.weeks.map((week, i) => {
                     const maxWeek = Math.max(...weeklyTrend.weeks.map(w => w.completed), 1);
                     return (
@@ -601,8 +630,8 @@ export default function Analytics() {
                         <div
                           className="w-full bg-primary rounded-t transition-all"
                           style={{
-                            height: `${(week.completed / maxWeek) * 60}px`,
-                            minHeight: week.completed > 0 ? '8px' : '2px',
+                            height: `${(week.completed / maxWeek) * 48}px`,
+                            minHeight: week.completed > 0 ? '6px' : '2px',
                             opacity: week.completed > 0 ? 1 : 0.3,
                           }}
                         />
@@ -611,9 +640,9 @@ export default function Analytics() {
                     );
                   })}
                 </div>
-                <div className="flex items-center justify-between text-sm border-t pt-3">
+                <div className="flex items-center justify-between text-xs border-t pt-2">
                   <span className="text-muted-foreground">
-                    Avg: <span className="font-medium text-foreground">{weeklyTrend.avgCompleted}</span> tasks/week
+                    Avg: <span className="font-medium text-foreground">{weeklyTrend.avgCompleted}</span>/week
                   </span>
                   <span className={`flex items-center gap-1 ${weeklyTrend.trend >= 0 ? 'text-success' : 'text-destructive'}`}>
                     {weeklyTrend.trend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -623,43 +652,59 @@ export default function Analytics() {
               </CardContent>
             </Card>
 
-            {/* Items Completed Chart with Time Period Tabs */}
+            {/* Items Completed Chart */}
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <CardTitle className="text-base font-medium flex items-center gap-2">
                     <BarChart3 className="h-4 w-4" />
-                    Items Completed
+                    Activity
                   </CardTitle>
                   <Tabs value={period} onValueChange={(v) => setPeriod(v as TimePeriod)}>
-                    <TabsList className="h-8">
-                      <TabsTrigger value="day" className="text-xs px-3 h-6">Day</TabsTrigger>
-                      <TabsTrigger value="week" className="text-xs px-3 h-6">Week</TabsTrigger>
-                      <TabsTrigger value="month" className="text-xs px-3 h-6">Month</TabsTrigger>
-                      <TabsTrigger value="year" className="text-xs px-3 h-6">Year</TabsTrigger>
+                    <TabsList className="h-7">
+                      <TabsTrigger value="day" className="text-xs px-2 h-5">Day</TabsTrigger>
+                      <TabsTrigger value="week" className="text-xs px-2 h-5">Week</TabsTrigger>
+                      <TabsTrigger value="month" className="text-xs px-2 h-5">Month</TabsTrigger>
+                      <TabsTrigger value="year" className="text-xs px-2 h-5">Year</TabsTrigger>
                     </TabsList>
                   </Tabs>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-end justify-between gap-1 h-32">
+                <div className="flex items-end justify-between gap-1 h-24">
                   {chartData.map((item, i) => (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                      <span className="text-xs text-muted-foreground mb-1">{item.count > 0 ? item.count : ''}</span>
+                      <span className="text-xs text-muted-foreground">{item.count > 0 ? item.count : ''}</span>
                       <div
                         className="w-full bg-primary rounded-t transition-all hover:bg-primary/80"
                         style={{
-                          height: `${(item.count / maxCount) * 80}px`,
-                          minHeight: item.count > 0 ? '8px' : '2px',
+                          height: `${(item.count / maxCount) * 64}px`,
+                          minHeight: item.count > 0 ? '6px' : '2px',
                           opacity: item.count > 0 ? 1 : 0.3,
                         }}
                       />
-                      <span className="text-xs text-muted-foreground mt-1">{item.label}</span>
+                      <span className="text-xs text-muted-foreground">{item.label}</span>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
+
+            {/* Compact Summary */}
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="p-3 rounded-lg bg-muted/30">
+                <p className="text-xl font-bold"><AnimatedNumber value={stats.total} duration={600} /></p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+              <div className="p-3 rounded-lg bg-success/10">
+                <p className="text-xl font-bold text-success"><AnimatedNumber value={stats.completed} duration={600} /></p>
+                <p className="text-xs text-muted-foreground">Done</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/30">
+                <p className="text-xl font-bold"><AnimatedNumber value={stats.toDo} duration={600} /></p>
+                <p className="text-xs text-muted-foreground">To Do</p>
+              </div>
+            </div>
           </div>
         )}
       </main>
