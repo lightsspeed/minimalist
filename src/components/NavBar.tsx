@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ListTodo, FileText, BarChart3, LogOut, HelpCircle, Archive, Bug, Mail, Github, Menu } from 'lucide-react';
+import { ListTodo, FileText, BarChart3, LogOut, HelpCircle, Archive, Bug, Mail, Github, Menu, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
@@ -59,6 +59,7 @@ export function NavBar() {
   const navItems = [
     { to: '/', icon: ListTodo, label: 'Tasks' },
     { to: '/notes', icon: FileText, label: 'Notes' },
+    { to: '/planning', icon: Calendar, label: 'Planning' },
     { to: '/archive', icon: Archive, label: 'Archive' },
     { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   ];

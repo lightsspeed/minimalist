@@ -76,7 +76,7 @@ export default function Analytics() {
     })).sort((a, b) => b.daysOverdue - a.daysOverdue).slice(0, 5);
   }, [tasks]);
 
-  // Today & This Week stats
+  // Today & This Week stats (including subtasks for today)
   const quickStats = useMemo(() => {
     const now = new Date();
     const todayStart = startOfDay(now);
@@ -88,6 +88,10 @@ export default function Analytics() {
     const todayCompleted = todayTasks.filter(t => t.completed_at && isAfter(new Date(t.completed_at), todayStart)).length;
     const todayTotal = todayTasks.filter(t => isAfter(new Date(t.created_at), todayStart) || t.due_date && format(new Date(t.due_date), 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd')).length || todayCompleted + todayTasks.filter(t => !t.is_completed).length;
     const todayRemaining = Math.max(0, todayTotal - todayCompleted);
+
+    // Today's subtasks
+    const todaySubtasksCompleted = subtasks.filter(s => s.is_completed && isAfter(new Date(s.created_at), todayStart)).length;
+    const todaySubtasksTotal = subtasks.filter(s => isAfter(new Date(s.created_at), todayStart)).length;
 
     // This week's tasks
     const weekTasks = tasks.filter(t => !t.is_template);
@@ -101,11 +105,13 @@ export default function Analytics() {
       todayCompleted,
       todayTotal: Math.max(todayTotal, todayCompleted),
       todayRemaining,
+      todaySubtasksCompleted,
+      todaySubtasksTotal,
       weekCompleted,
       weekTotal: Math.max(weekTotal, weekCompleted),
       weekDiff
     };
-  }, [tasks]);
+  }, [tasks, subtasks]);
 
   // Productivity streak
   const streak = useMemo(() => {
@@ -332,10 +338,13 @@ export default function Analytics() {
                   <p className="text-2xl font-bold mb-1">
                     <AnimatedNumber value={quickStats.todayCompleted} duration={800} />
                     <span className="text-muted-foreground font-normal">/{quickStats.todayTotal}</span>
-                    <span className="text-sm font-normal text-muted-foreground ml-1">completed</span>
+                    <span className="text-sm font-normal text-muted-foreground ml-1">tasks</span>
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {quickStats.todayRemaining} remaining
+                    {quickStats.todaySubtasksTotal > 0 && (
+                      <span className="ml-2">• {quickStats.todaySubtasksCompleted}/{quickStats.todaySubtasksTotal} subtasks</span>
+                    )}
                   </p>
                 </CardContent>
               </Card>
@@ -394,30 +403,15 @@ export default function Analytics() {
               <Card className="hover:bg-hover-blue transition-colors">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-primary/10 rounded-xl">
-                      <ListTodo className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">
-                        <AnimatedNumber value={stats.total} duration={800} />
-                      </p>
-                      <p className="text-xs text-muted-foreground">Total Items</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:bg-hover-blue transition-colors">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-success/10 rounded-xl">
                       <CircleCheck className="h-5 w-5 text-success" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold">
-                        <AnimatedNumber value={stats.completed} duration={800} delay={100} />
+                        <AnimatedNumber value={stats.completionRate} duration={800} suffix="%" />
                       </p>
                       <p className="text-xs text-muted-foreground">Completed</p>
+                      <p className="text-xs text-muted-foreground">{stats.completed}/{stats.total} items</p>
                     </div>
                   </div>
                 </CardContent>
@@ -431,7 +425,7 @@ export default function Analytics() {
                     </div>
                     <div>
                       <p className="text-2xl font-bold">
-                        <AnimatedNumber value={stats.toDo} duration={800} delay={200} />
+                        <AnimatedNumber value={stats.toDo} duration={800} delay={100} />
                       </p>
                       <p className="text-xs text-muted-foreground">To Do</p>
                     </div>
@@ -447,9 +441,25 @@ export default function Analytics() {
                     </div>
                     <div>
                       <p className="text-2xl font-bold">
-                        <AnimatedNumber value={stats.last7Days} duration={800} delay={300} />
+                        <AnimatedNumber value={stats.last7Days} duration={800} delay={200} />
                       </p>
                       <p className="text-xs text-muted-foreground">Last 7 days</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:bg-hover-blue transition-colors">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-primary/10 rounded-xl">
+                      <ListTodo className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">
+                        <AnimatedNumber value={stats.totalSubtasks} duration={800} delay={300} />
+                      </p>
+                      <p className="text-xs text-muted-foreground">Subtasks</p>
                     </div>
                   </div>
                 </CardContent>
@@ -459,9 +469,14 @@ export default function Analytics() {
             {/* This Week's Priorities */}
             {weeklyPriorities.length > 0 && <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-medium flex items-center gap-2">
-                    <Target className="h-4 w-4" />
-                    This Week's Priorities
+                  <CardTitle className="text-base font-medium flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      This Week's Priorities
+                    </span>
+                    <Button asChild variant="ghost" size="sm" className="text-xs h-7">
+                      <Link to="/planning">View Planning →</Link>
+                    </Button>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -483,28 +498,7 @@ export default function Analytics() {
                 </CardContent>
               </Card>}
 
-            {/* Completion Rate */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base font-medium">Completion Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span className="font-medium">
-                      <AnimatedNumber value={stats.completionRate} duration={1000} suffix="%" />
-                    </span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full transition-all duration-1000 ease-out" style={{
-                  width: `${stats.completionRate}%`,
-                  animation: 'progressFill 1s ease-out forwards'
-                }} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+
 
             {/* Completion Trend (replaces Monthly Breakdown) */}
             <Card>
