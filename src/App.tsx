@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import SharedNote from "./pages/SharedNote";
 import SharedPersonalNote from "./pages/SharedPersonalNote";
 import Analytics from "./pages/Analytics";
+import Planning from "./pages/Planning";
 import Notes from "./pages/Notes";
 import Archive from "./pages/Archive";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/shared/:token" element={<SharedNote />} />
           <Route path="/shared-note/:token" element={<SharedPersonalNote />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/planning" element={<Planning />} />
           <Route path="/notes" element={<Notes />} />
           <Route path="/archive" element={<Archive />} />
           <Route path="*" element={<NotFound />} />
