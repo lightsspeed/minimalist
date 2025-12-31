@@ -1,15 +1,20 @@
-import { useMemo, useState, useEffect } from 'react';
-import { Navigate, Link } from 'react-router-dom';
-import { Calendar, CalendarDays, CalendarRange, Target, Plus, ChevronLeft, ChevronRight, Check, Clock } from 'lucide-react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { Navigate } from 'react-router-dom';
+import { Calendar, CalendarDays, CalendarRange, Target, Plus, ChevronLeft, ChevronRight, Check, Clock, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks, Task } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks, addMonths, subDays, subWeeks, subMonths, isSameDay, isWithinInterval, isBefore, isAfter, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks, addMonths, subDays, subWeeks, subMonths, isSameDay, isWithinInterval, isBefore, startOfDay, endOfDay, setHours, setMinutes } from 'date-fns';
 import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 type PlanView = 'day' | 'week' | 'month';
 
@@ -22,11 +27,19 @@ interface Subtask {
 
 export default function Planning() {
   const { user, loading: authLoading } = useAuth();
-  const { tasks, loading: tasksLoading, updateTask } = useTasks();
+  const { tasks, loading: tasksLoading, updateTask, addTask } = useTasks();
   const [view, setView] = useState<PlanView>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [subtasksMap, setSubtasksMap] = useState<Record<string, Subtask[]>>({});
   const [subtasksLoading, setSubtasksLoading] = useState(true);
+  
+  // Quick add task state
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickTaskTitle, setQuickTaskTitle] = useState('');
+  const [quickTaskDate, setQuickTaskDate] = useState<Date | undefined>(undefined);
+  const [quickTaskTime, setQuickTaskTime] = useState('09:00');
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const quickAddInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch subtasks for all tasks
   useEffect(() => {
@@ -147,6 +160,50 @@ export default function Planning() {
 
   const handleToggleComplete = async (task: Task) => {
     await updateTask(task.id, { is_completed: !task.is_completed });
+  };
+
+  // Quick add task handler
+  const handleQuickAddTask = async () => {
+    if (!quickTaskTitle.trim()) {
+      toast.error('Please enter a task title');
+      return;
+    }
+
+    setIsAddingTask(true);
+    
+    // Combine date and time
+    let dueDate: Date | null = null;
+    if (quickTaskDate) {
+      const [hours, minutes] = quickTaskTime.split(':').map(Number);
+      dueDate = setMinutes(setHours(quickTaskDate, hours), minutes);
+    } else if (view === 'day') {
+      // Default to current view date if no date selected
+      const [hours, minutes] = quickTaskTime.split(':').map(Number);
+      dueDate = setMinutes(setHours(currentDate, hours), minutes);
+    }
+
+    const result = await addTask(quickTaskTitle.trim(), '', [], dueDate);
+    
+    if (!result?.error) {
+      toast.success('Task added');
+      setQuickTaskTitle('');
+      setQuickTaskDate(undefined);
+      setQuickTaskTime('09:00');
+      setShowQuickAdd(false);
+    }
+    
+    setIsAddingTask(false);
+  };
+
+  const openQuickAdd = () => {
+    // Set default date based on current view
+    if (view === 'day') {
+      setQuickTaskDate(currentDate);
+    } else {
+      setQuickTaskDate(undefined);
+    }
+    setShowQuickAdd(true);
+    setTimeout(() => quickAddInputRef.current?.focus(), 100);
   };
 
   // Group tasks by date for week/month view
@@ -296,69 +353,248 @@ export default function Planning() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-medium flex items-center justify-between">
                     <span>Tasks for {format(currentDate, 'MMMM d')}</span>
-                    <Button asChild variant="outline" size="sm">
-                      <Link to="/">
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Task
-                      </Link>
+                    <Button variant="outline" size="sm" onClick={openQuickAdd}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Task
                     </Button>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {filteredTasks.length === 0 ? (
+                  {filteredTasks.length === 0 && !showQuickAdd ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <Calendar className="h-12 w-12 mx-auto mb-3 opacity-20" />
                       <p>No tasks scheduled for this day</p>
-                      <Button asChild variant="link" className="mt-2">
-                        <Link to="/">Add a task with a due date</Link>
+                      <Button variant="link" className="mt-2" onClick={openQuickAdd}>
+                        Add a task
                       </Button>
                     </div>
                   ) : (
-                    <ul className="space-y-2">
-                      {filteredTasks
-                        .sort((a, b) => (a.is_completed ? 1 : 0) - (b.is_completed ? 1 : 0))
-                        .map(task => {
-                          const taskSubtasks = subtasksMap[task.id] || [];
-                          const isOverdue = !task.is_completed && task.due_date && isBefore(new Date(task.due_date), new Date());
-                          
-                          return (
-                            <li 
-                              key={task.id} 
-                              className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
-                                task.is_completed ? 'bg-muted/30' : isOverdue ? 'bg-destructive/5 border border-destructive/20' : 'hover:bg-muted/50'
-                              }`}
+                    <div className="space-y-3">
+                      {/* Quick Add Form */}
+                      {showQuickAdd && (
+                        <div className="p-3 border rounded-lg bg-muted/30 space-y-3">
+                          <div className="flex gap-2">
+                            <Input
+                              ref={quickAddInputRef}
+                              placeholder="Task title..."
+                              value={quickTaskTitle}
+                              onChange={(e) => setQuickTaskTitle(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleQuickAddTask();
+                                }
+                                if (e.key === 'Escape') {
+                                  setShowQuickAdd(false);
+                                  setQuickTaskTitle('');
+                                }
+                              }}
+                              className="flex-1"
+                              maxLength={200}
+                            />
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
+                                setShowQuickAdd(false);
+                                setQuickTaskTitle('');
+                              }}
                             >
-                              <Checkbox 
-                                checked={task.is_completed}
-                                onCheckedChange={() => handleToggleComplete(task)}
-                                className="mt-0.5"
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                                  <CalendarDays className="h-3.5 w-3.5" />
+                                  {quickTaskDate ? format(quickTaskDate, 'MMM d') : 'Pick date'}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <CalendarComponent
+                                  mode="single"
+                                  selected={quickTaskDate}
+                                  onSelect={setQuickTaskDate}
+                                  initialFocus
+                                  className={cn("p-3 pointer-events-auto")}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                              <Input
+                                type="time"
+                                value={quickTaskTime}
+                                onChange={(e) => setQuickTaskTime(e.target.value)}
+                                className="h-8 w-24 text-sm"
                               />
-                              <div className="flex-1 min-w-0">
-                                <p className={`font-medium ${task.is_completed ? 'line-through text-muted-foreground' : ''}`}>
-                                  {task.title}
-                                </p>
-                                {task.description && (
-                                  <p className="text-sm text-muted-foreground truncate">{task.description}</p>
-                                )}
-                                {taskSubtasks.length > 0 && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {taskSubtasks.filter(st => st.is_completed).length}/{taskSubtasks.length} subtasks
-                                  </p>
-                                )}
-                              </div>
-                              {isOverdue && (
-                                <span className="text-xs text-destructive font-medium">Overdue</span>
-                              )}
-                            </li>
-                          );
-                        })}
-                    </ul>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={handleQuickAddTask}
+                              disabled={isAddingTask || !quickTaskTitle.trim()}
+                              className="ml-auto"
+                            >
+                              {isAddingTask ? 'Adding...' : 'Add Task'}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Task List */}
+                      {filteredTasks.length > 0 && (
+                        <ul className="space-y-2">
+                          {filteredTasks
+                            .sort((a, b) => (a.is_completed ? 1 : 0) - (b.is_completed ? 1 : 0))
+                            .map(task => {
+                              const taskSubtasks = subtasksMap[task.id] || [];
+                              const isOverdue = !task.is_completed && task.due_date && isBefore(new Date(task.due_date), new Date());
+                              
+                              return (
+                                <li 
+                                  key={task.id} 
+                                  className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
+                                    task.is_completed ? 'bg-muted/30' : isOverdue ? 'bg-destructive/5 border border-destructive/20' : 'hover:bg-muted/50'
+                                  }`}
+                                >
+                                  <Checkbox 
+                                    checked={task.is_completed}
+                                    onCheckedChange={() => handleToggleComplete(task)}
+                                    className="mt-0.5"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`font-medium ${task.is_completed ? 'line-through text-muted-foreground' : ''}`}>
+                                      {task.title}
+                                    </p>
+                                    {task.description && (
+                                      <p className="text-sm text-muted-foreground truncate">{task.description}</p>
+                                    )}
+                                    {taskSubtasks.length > 0 && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {taskSubtasks.filter(st => st.is_completed).length}/{taskSubtasks.length} subtasks
+                                      </p>
+                                    )}
+                                  </div>
+                                  {isOverdue && (
+                                    <span className="text-xs text-destructive font-medium">Overdue</span>
+                                  )}
+                                </li>
+                              );
+                            })}
+                        </ul>
+                      )}
+                      
+                      {/* Add another task button when list is not empty */}
+                      {filteredTasks.length > 0 && !showQuickAdd && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full text-muted-foreground"
+                          onClick={openQuickAdd}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add another task
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>
             ) : (
               // Week/Month View - Grouped by date
               <>
+                {/* Quick Add Form for Week/Month View */}
+                {showQuickAdd && (
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <Input
+                            ref={quickAddInputRef}
+                            placeholder="Task title..."
+                            value={quickTaskTitle}
+                            onChange={(e) => setQuickTaskTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleQuickAddTask();
+                              }
+                              if (e.key === 'Escape') {
+                                setShowQuickAdd(false);
+                                setQuickTaskTitle('');
+                              }
+                            }}
+                            className="flex-1"
+                            maxLength={200}
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              setShowQuickAdd(false);
+                              setQuickTaskTitle('');
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                                <CalendarDays className="h-3.5 w-3.5" />
+                                {quickTaskDate ? format(quickTaskDate, 'MMM d') : 'Pick date'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <CalendarComponent
+                                mode="single"
+                                selected={quickTaskDate}
+                                onSelect={setQuickTaskDate}
+                                initialFocus
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                              type="time"
+                              value={quickTaskTime}
+                              onChange={(e) => setQuickTaskTime(e.target.value)}
+                              className="h-8 w-24 text-sm"
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={handleQuickAddTask}
+                            disabled={isAddingTask || !quickTaskTitle.trim() || !quickTaskDate}
+                            className="ml-auto"
+                          >
+                            {isAddingTask ? 'Adding...' : 'Add Task'}
+                          </Button>
+                        </div>
+                        {!quickTaskDate && (
+                          <p className="text-xs text-muted-foreground">Please select a date for the task</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Add Task Button for Week/Month View */}
+                {!showQuickAdd && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={openQuickAdd}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Task
+                  </Button>
+                )}
+
                 {groupedTasks && groupedTasks.length > 0 ? (
                   groupedTasks.map(group => (
                     <Card key={group.date}>
@@ -405,14 +641,14 @@ export default function Planning() {
                       </CardContent>
                     </Card>
                   ))
-                ) : (
+                ) : !showQuickAdd && (
                   <Card>
                     <CardContent className="py-12">
                       <div className="text-center text-muted-foreground">
                         <Calendar className="h-12 w-12 mx-auto mb-3 opacity-20" />
                         <p>No tasks scheduled for this {view}</p>
-                        <Button asChild variant="link" className="mt-2">
-                          <Link to="/">Add tasks with due dates</Link>
+                        <Button variant="link" className="mt-2" onClick={openQuickAdd}>
+                          Add a task
                         </Button>
                       </div>
                     </CardContent>
