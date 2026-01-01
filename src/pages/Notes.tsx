@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { Plus, Trash2, FileText, Share2, FolderOpen, Tag, X, Search, Pin, ExternalLink } from 'lucide-react';
+import { MarkdownToolbar } from '@/components/MarkdownToolbar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -49,6 +50,7 @@ export default function Notes() {
   const [tagInput, setTagInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Get unique folders from notes
   const folders = [...new Set(notes.map(n => n.folder).filter(Boolean))] as string[];
@@ -423,12 +425,19 @@ export default function Notes() {
                     </div>
                   </div>
 
+                  <MarkdownToolbar 
+                    textareaRef={textareaRef}
+                    content={content}
+                    onContentChange={setContent}
+                  />
+
                   <Textarea
+                    ref={textareaRef}
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type your note here..."
-                    className="flex-1 min-h-[300px] md:min-h-[calc(100vh-280px)] resize-none border-0 focus-visible:ring-0 text-base leading-relaxed"
+                    placeholder="Type your note here... (Markdown supported)"
+                    className="flex-1 min-h-[300px] md:min-h-[calc(100vh-320px)] resize-none border-0 focus-visible:ring-0 text-base leading-relaxed font-mono"
                   />
                 </div>
               ) : (
