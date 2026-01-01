@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import { 
   Bold, 
   Italic, 
@@ -13,8 +12,7 @@ import {
   Quote, 
   CheckSquare,
   Minus,
-  Strikethrough,
-  Type
+  Strikethrough
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -24,19 +22,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 interface MarkdownToolbarProps {
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   content: string;
   onContentChange: (content: string) => void;
-  currentFont: string;
-  onFontChange: (font: string) => void;
 }
 
 type FormatAction = 
@@ -47,21 +37,7 @@ type FormatAction =
   | 'link' | 'image'
   | 'quote' | 'hr';
 
-const FONTS = [
-  { value: 'font-mono', label: 'Monospace' },
-  { value: 'font-sans', label: 'Sans Serif' },
-  { value: 'font-serif', label: 'Serif' },
-];
-
-export function MarkdownToolbar({ 
-  textareaRef, 
-  content, 
-  onContentChange, 
-  currentFont, 
-  onFontChange 
-}: MarkdownToolbarProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+export function MarkdownToolbar({ textareaRef, content, onContentChange }: MarkdownToolbarProps) {
   const insertFormat = (action: FormatAction) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -73,8 +49,7 @@ export function MarkdownToolbar({
     let before = content.substring(0, start);
     let after = content.substring(end);
     let newText = '';
-    let newCursorStart = start;
-    let newCursorEnd = start;
+    let cursorOffset = 0;
 
     // Check if we're at the start of a line
     const lineStart = before.lastIndexOf('\n') + 1;
@@ -82,157 +57,104 @@ export function MarkdownToolbar({
 
     switch (action) {
       case 'h1':
-        if (selectedText) {
-          // Wrap selected text
-          if (isLineStart) {
-            newText = `# ${selectedText}`;
-            newCursorStart = start + 2;
-            newCursorEnd = start + 2 + selectedText.length;
-          } else {
-            newText = `\n# ${selectedText}`;
-            newCursorStart = start + 3;
-            newCursorEnd = start + 3 + selectedText.length;
-          }
+        if (isLineStart) {
+          newText = `# ${selectedText}`;
+          cursorOffset = selectedText ? selectedText.length + 2 : 2;
         } else {
-          newText = isLineStart ? '# ' : '\n# ';
-          newCursorStart = newCursorEnd = start + newText.length;
+          newText = `\n# ${selectedText}`;
+          cursorOffset = selectedText ? selectedText.length + 3 : 3;
         }
         break;
       case 'h2':
-        if (selectedText) {
-          if (isLineStart) {
-            newText = `## ${selectedText}`;
-            newCursorStart = start + 3;
-            newCursorEnd = start + 3 + selectedText.length;
-          } else {
-            newText = `\n## ${selectedText}`;
-            newCursorStart = start + 4;
-            newCursorEnd = start + 4 + selectedText.length;
-          }
+        if (isLineStart) {
+          newText = `## ${selectedText}`;
+          cursorOffset = selectedText ? selectedText.length + 3 : 3;
         } else {
-          newText = isLineStart ? '## ' : '\n## ';
-          newCursorStart = newCursorEnd = start + newText.length;
+          newText = `\n## ${selectedText}`;
+          cursorOffset = selectedText ? selectedText.length + 4 : 4;
         }
         break;
       case 'h3':
-        if (selectedText) {
-          if (isLineStart) {
-            newText = `### ${selectedText}`;
-            newCursorStart = start + 4;
-            newCursorEnd = start + 4 + selectedText.length;
-          } else {
-            newText = `\n### ${selectedText}`;
-            newCursorStart = start + 5;
-            newCursorEnd = start + 5 + selectedText.length;
-          }
+        if (isLineStart) {
+          newText = `### ${selectedText}`;
+          cursorOffset = selectedText ? selectedText.length + 4 : 4;
         } else {
-          newText = isLineStart ? '### ' : '\n### ';
-          newCursorStart = newCursorEnd = start + newText.length;
+          newText = `\n### ${selectedText}`;
+          cursorOffset = selectedText ? selectedText.length + 5 : 5;
         }
         break;
       case 'bold':
-        if (selectedText) {
-          newText = `**${selectedText}**`;
-          newCursorStart = start + 2;
-          newCursorEnd = start + 2 + selectedText.length;
-        } else {
-          newText = '**bold**';
-          newCursorStart = start + 2;
-          newCursorEnd = start + 6;
-        }
+        newText = `**${selectedText || 'bold text'}**`;
+        cursorOffset = selectedText ? selectedText.length + 4 : 2;
         break;
       case 'italic':
-        if (selectedText) {
-          newText = `*${selectedText}*`;
-          newCursorStart = start + 1;
-          newCursorEnd = start + 1 + selectedText.length;
-        } else {
-          newText = '*italic*';
-          newCursorStart = start + 1;
-          newCursorEnd = start + 7;
-        }
+        newText = `*${selectedText || 'italic text'}*`;
+        cursorOffset = selectedText ? selectedText.length + 2 : 1;
         break;
       case 'strikethrough':
-        if (selectedText) {
-          newText = `~~${selectedText}~~`;
-          newCursorStart = start + 2;
-          newCursorEnd = start + 2 + selectedText.length;
-        } else {
-          newText = '~~strikethrough~~';
-          newCursorStart = start + 2;
-          newCursorEnd = start + 15;
-        }
+        newText = `~~${selectedText || 'strikethrough'}~~`;
+        cursorOffset = selectedText ? selectedText.length + 4 : 2;
         break;
       case 'ul':
         if (isLineStart) {
           newText = `- ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 2 + selectedText.length;
+          cursorOffset = selectedText ? selectedText.length + 2 : 2;
         } else {
           newText = `\n- ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 3 + selectedText.length;
+          cursorOffset = selectedText ? selectedText.length + 3 : 3;
         }
         break;
       case 'ol':
         if (isLineStart) {
           newText = `1. ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 3 + selectedText.length;
+          cursorOffset = selectedText ? selectedText.length + 3 : 3;
         } else {
           newText = `\n1. ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 4 + selectedText.length;
+          cursorOffset = selectedText ? selectedText.length + 4 : 4;
         }
         break;
       case 'checkbox':
         if (isLineStart) {
           newText = `- [ ] ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 6 + selectedText.length;
+          cursorOffset = selectedText ? selectedText.length + 6 : 6;
         } else {
           newText = `\n- [ ] ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 7 + selectedText.length;
+          cursorOffset = selectedText ? selectedText.length + 7 : 7;
         }
         break;
       case 'code':
-        if (selectedText) {
-          newText = `\`${selectedText}\``;
-          newCursorStart = start + 1;
-          newCursorEnd = start + 1 + selectedText.length;
-        } else {
-          newText = '`code`';
-          newCursorStart = start + 1;
-          newCursorEnd = start + 5;
-        }
+        newText = `\`${selectedText || 'code'}\``;
+        cursorOffset = selectedText ? selectedText.length + 2 : 1;
         break;
       case 'codeblock':
         newText = `\n\`\`\`\n${selectedText || 'code here'}\n\`\`\`\n`;
-        newCursorStart = start + 5;
-        newCursorEnd = start + 5 + (selectedText || 'code here').length;
+        cursorOffset = selectedText ? selectedText.length + 5 : 4;
         break;
       case 'link':
         if (selectedText) {
           newText = `[${selectedText}](url)`;
-          newCursorStart = start + selectedText.length + 3;
-          newCursorEnd = start + selectedText.length + 6;
+          cursorOffset = selectedText.length + 3;
         } else {
-          newText = '[link text](url)';
-          newCursorStart = start + 1;
-          newCursorEnd = start + 10;
+          newText = `[link text](url)`;
+          cursorOffset = 1;
         }
         break;
       case 'image':
-        // Trigger file picker
-        fileInputRef.current?.click();
-        return;
+        newText = `![${selectedText || 'alt text'}](image-url)`;
+        cursorOffset = selectedText ? selectedText.length + 14 : 2;
+        break;
       case 'quote':
         if (isLineStart) {
           newText = `> ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 2 + selectedText.length;
+          cursorOffset = selectedText ? selectedText.length + 2 : 2;
         } else {
           newText = `\n> ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 3 + selectedText.length;
+          cursorOffset = selectedText ? selectedText.length + 3 : 3;
         }
         break;
       case 'hr':
         newText = isLineStart ? '---\n' : '\n---\n';
-        newCursorStart = newCursorEnd = start + newText.length;
+        cursorOffset = newText.length;
         break;
     }
 
@@ -242,101 +164,35 @@ export function MarkdownToolbar({
     // Set cursor position after React updates
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(newCursorStart, newCursorEnd);
-    }, 0);
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    // Create a local URL for the image
-    const imageUrl = URL.createObjectURL(file);
-    const fileName = file.name.replace(/\.[^/.]+$/, '');
-    
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const before = content.substring(0, start);
-    const after = content.substring(end);
-    
-    const imageMarkdown = `![${fileName}](${imageUrl})`;
-    const newContent = before + imageMarkdown + after;
-    onContentChange(newContent);
-
-    // Reset file input
-    e.target.value = '';
-
-    setTimeout(() => {
-      textarea.focus();
-      const newPos = start + imageMarkdown.length;
-      textarea.setSelectionRange(newPos, newPos);
+      const newCursorPos = start + cursorOffset;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
     }, 0);
   };
 
   const tools = [
-    { action: 'h1' as FormatAction, icon: Heading1, label: 'Heading 1' },
-    { action: 'h2' as FormatAction, icon: Heading2, label: 'Heading 2' },
-    { action: 'h3' as FormatAction, icon: Heading3, label: 'Heading 3' },
+    { action: 'h1' as FormatAction, icon: Heading1, label: 'Heading 1', shortcut: '' },
+    { action: 'h2' as FormatAction, icon: Heading2, label: 'Heading 2', shortcut: '' },
+    { action: 'h3' as FormatAction, icon: Heading3, label: 'Heading 3', shortcut: '' },
     { type: 'separator' },
-    { action: 'bold' as FormatAction, icon: Bold, label: 'Bold (Ctrl+B)' },
-    { action: 'italic' as FormatAction, icon: Italic, label: 'Italic (Ctrl+I)' },
-    { action: 'strikethrough' as FormatAction, icon: Strikethrough, label: 'Strikethrough' },
+    { action: 'bold' as FormatAction, icon: Bold, label: 'Bold', shortcut: 'Ctrl+B' },
+    { action: 'italic' as FormatAction, icon: Italic, label: 'Italic', shortcut: 'Ctrl+I' },
+    { action: 'strikethrough' as FormatAction, icon: Strikethrough, label: 'Strikethrough', shortcut: '' },
     { type: 'separator' },
-    { action: 'ul' as FormatAction, icon: List, label: 'Bullet List' },
-    { action: 'ol' as FormatAction, icon: ListOrdered, label: 'Numbered List' },
-    { action: 'checkbox' as FormatAction, icon: CheckSquare, label: 'Checkbox' },
+    { action: 'ul' as FormatAction, icon: List, label: 'Bullet List', shortcut: '' },
+    { action: 'ol' as FormatAction, icon: ListOrdered, label: 'Numbered List', shortcut: '' },
+    { action: 'checkbox' as FormatAction, icon: CheckSquare, label: 'Checkbox', shortcut: '' },
     { type: 'separator' },
-    { action: 'code' as FormatAction, icon: Code, label: 'Inline Code' },
-    { action: 'quote' as FormatAction, icon: Quote, label: 'Quote' },
-    { action: 'hr' as FormatAction, icon: Minus, label: 'Horizontal Rule' },
+    { action: 'code' as FormatAction, icon: Code, label: 'Inline Code', shortcut: '' },
+    { action: 'quote' as FormatAction, icon: Quote, label: 'Quote', shortcut: '' },
+    { action: 'hr' as FormatAction, icon: Minus, label: 'Horizontal Rule', shortcut: '' },
     { type: 'separator' },
-    { action: 'link' as FormatAction, icon: Link, label: 'Link' },
-    { action: 'image' as FormatAction, icon: Image, label: 'Insert Image' },
+    { action: 'link' as FormatAction, icon: Link, label: 'Link', shortcut: '' },
+    { action: 'image' as FormatAction, icon: Image, label: 'Image', shortcut: '' },
   ];
 
   return (
     <TooltipProvider>
       <div className="flex items-center gap-0.5 flex-wrap p-1 bg-muted/30 rounded-md border mb-2">
-        {/* Font Selector */}
-        <DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-muted gap-1"
-                >
-                  <Type className="h-4 w-4" />
-                  <span className="text-xs hidden sm:inline">
-                    {FONTS.find(f => f.value === currentFont)?.label || 'Font'}
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              Change Font
-            </TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent align="start">
-            {FONTS.map((font) => (
-              <DropdownMenuItem 
-                key={font.value} 
-                onClick={() => onFontChange(font.value)}
-                className={currentFont === font.value ? 'bg-accent' : ''}
-              >
-                <span className={font.value}>{font.label}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Separator orientation="vertical" className="h-6 mx-1" />
-
         {tools.map((tool, index) => {
           if (tool.type === 'separator') {
             return <Separator key={index} orientation="vertical" className="h-6 mx-1" />;
@@ -358,19 +214,11 @@ export function MarkdownToolbar({
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">
                 {tool.label}
+                {tool.shortcut && <span className="ml-2 text-muted-foreground">{tool.shortcut}</span>}
               </TooltipContent>
             </Tooltip>
           );
         })}
-
-        {/* Hidden file input for image upload */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleImageUpload}
-        />
       </div>
     </TooltipProvider>
   );

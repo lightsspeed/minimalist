@@ -49,7 +49,6 @@ export default function Notes() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [editorFont, setEditorFont] = useState('font-mono');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -430,8 +429,6 @@ export default function Notes() {
                     textareaRef={textareaRef}
                     content={content}
                     onContentChange={setContent}
-                    currentFont={editorFont}
-                    onFontChange={setEditorFont}
                   />
 
                   <Textarea
@@ -440,7 +437,7 @@ export default function Notes() {
                     onChange={(e) => setContent(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Type your note here... (Markdown supported)"
-                    className={`flex-1 min-h-[300px] md:min-h-[calc(100vh-320px)] resize-none border-0 focus-visible:ring-0 text-base leading-relaxed ${editorFont}`}
+                    className="flex-1 min-h-[300px] md:min-h-[calc(100vh-320px)] resize-none border-0 focus-visible:ring-0 text-base leading-relaxed font-mono"
                   />
                 </div>
               ) : (
