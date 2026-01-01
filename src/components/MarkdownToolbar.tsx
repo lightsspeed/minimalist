@@ -39,14 +39,6 @@ interface MarkdownToolbarProps {
   onFontChange: (font: string) => void;
 }
 
-type FormatAction = 
-  | 'h1' | 'h2' | 'h3' 
-  | 'bold' | 'italic' | 'strikethrough'
-  | 'ul' | 'ol' | 'checkbox'
-  | 'code' | 'codeblock'
-  | 'link' | 'image'
-  | 'quote' | 'hr';
-
 const FONTS = [
   { value: 'font-mono', label: 'Monospace' },
   { value: 'font-sans', label: 'Sans Serif' },
@@ -62,188 +54,135 @@ export function MarkdownToolbar({
 }: MarkdownToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const insertFormat = (action: FormatAction) => {
+  const wrapSelection = (prefix: string, suffix: string, placeholder: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = content.substring(start, end);
+    const textToWrap = selectedText || placeholder;
     
-    let before = content.substring(0, start);
-    let after = content.substring(end);
-    let newText = '';
-    let newCursorStart = start;
-    let newCursorEnd = start;
-
-    // Check if we're at the start of a line
-    const lineStart = before.lastIndexOf('\n') + 1;
-    const isLineStart = start === lineStart || before.endsWith('\n') || before === '';
-
-    switch (action) {
-      case 'h1':
-        if (selectedText) {
-          // Wrap selected text
-          if (isLineStart) {
-            newText = `# ${selectedText}`;
-            newCursorStart = start + 2;
-            newCursorEnd = start + 2 + selectedText.length;
-          } else {
-            newText = `\n# ${selectedText}`;
-            newCursorStart = start + 3;
-            newCursorEnd = start + 3 + selectedText.length;
-          }
-        } else {
-          newText = isLineStart ? '# ' : '\n# ';
-          newCursorStart = newCursorEnd = start + newText.length;
-        }
-        break;
-      case 'h2':
-        if (selectedText) {
-          if (isLineStart) {
-            newText = `## ${selectedText}`;
-            newCursorStart = start + 3;
-            newCursorEnd = start + 3 + selectedText.length;
-          } else {
-            newText = `\n## ${selectedText}`;
-            newCursorStart = start + 4;
-            newCursorEnd = start + 4 + selectedText.length;
-          }
-        } else {
-          newText = isLineStart ? '## ' : '\n## ';
-          newCursorStart = newCursorEnd = start + newText.length;
-        }
-        break;
-      case 'h3':
-        if (selectedText) {
-          if (isLineStart) {
-            newText = `### ${selectedText}`;
-            newCursorStart = start + 4;
-            newCursorEnd = start + 4 + selectedText.length;
-          } else {
-            newText = `\n### ${selectedText}`;
-            newCursorStart = start + 5;
-            newCursorEnd = start + 5 + selectedText.length;
-          }
-        } else {
-          newText = isLineStart ? '### ' : '\n### ';
-          newCursorStart = newCursorEnd = start + newText.length;
-        }
-        break;
-      case 'bold':
-        if (selectedText) {
-          newText = `**${selectedText}**`;
-          newCursorStart = start + 2;
-          newCursorEnd = start + 2 + selectedText.length;
-        } else {
-          newText = '**bold**';
-          newCursorStart = start + 2;
-          newCursorEnd = start + 6;
-        }
-        break;
-      case 'italic':
-        if (selectedText) {
-          newText = `*${selectedText}*`;
-          newCursorStart = start + 1;
-          newCursorEnd = start + 1 + selectedText.length;
-        } else {
-          newText = '*italic*';
-          newCursorStart = start + 1;
-          newCursorEnd = start + 7;
-        }
-        break;
-      case 'strikethrough':
-        if (selectedText) {
-          newText = `~~${selectedText}~~`;
-          newCursorStart = start + 2;
-          newCursorEnd = start + 2 + selectedText.length;
-        } else {
-          newText = '~~strikethrough~~';
-          newCursorStart = start + 2;
-          newCursorEnd = start + 15;
-        }
-        break;
-      case 'ul':
-        if (isLineStart) {
-          newText = `- ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 2 + selectedText.length;
-        } else {
-          newText = `\n- ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 3 + selectedText.length;
-        }
-        break;
-      case 'ol':
-        if (isLineStart) {
-          newText = `1. ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 3 + selectedText.length;
-        } else {
-          newText = `\n1. ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 4 + selectedText.length;
-        }
-        break;
-      case 'checkbox':
-        if (isLineStart) {
-          newText = `- [ ] ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 6 + selectedText.length;
-        } else {
-          newText = `\n- [ ] ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 7 + selectedText.length;
-        }
-        break;
-      case 'code':
-        if (selectedText) {
-          newText = `\`${selectedText}\``;
-          newCursorStart = start + 1;
-          newCursorEnd = start + 1 + selectedText.length;
-        } else {
-          newText = '`code`';
-          newCursorStart = start + 1;
-          newCursorEnd = start + 5;
-        }
-        break;
-      case 'codeblock':
-        newText = `\n\`\`\`\n${selectedText || 'code here'}\n\`\`\`\n`;
-        newCursorStart = start + 5;
-        newCursorEnd = start + 5 + (selectedText || 'code here').length;
-        break;
-      case 'link':
-        if (selectedText) {
-          newText = `[${selectedText}](url)`;
-          newCursorStart = start + selectedText.length + 3;
-          newCursorEnd = start + selectedText.length + 6;
-        } else {
-          newText = '[link text](url)';
-          newCursorStart = start + 1;
-          newCursorEnd = start + 10;
-        }
-        break;
-      case 'image':
-        // Trigger file picker
-        fileInputRef.current?.click();
-        return;
-      case 'quote':
-        if (isLineStart) {
-          newText = `> ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 2 + selectedText.length;
-        } else {
-          newText = `\n> ${selectedText}`;
-          newCursorStart = newCursorEnd = start + 3 + selectedText.length;
-        }
-        break;
-      case 'hr':
-        newText = isLineStart ? '---\n' : '\n---\n';
-        newCursorStart = newCursorEnd = start + newText.length;
-        break;
-    }
-
-    const newContent = before + newText + after;
+    const before = content.substring(0, start);
+    const after = content.substring(end);
+    
+    const newContent = before + prefix + textToWrap + suffix + after;
     onContentChange(newContent);
 
-    // Set cursor position after React updates
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(newCursorStart, newCursorEnd);
-    }, 0);
+      if (selectedText) {
+        // Keep the wrapped text selected
+        textarea.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
+      } else {
+        // Select the placeholder
+        textarea.setSelectionRange(start + prefix.length, start + prefix.length + placeholder.length);
+      }
+    }, 10);
+  };
+
+  const insertLinePrefix = (prefix: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    const before = content.substring(0, start);
+    const after = content.substring(end);
+
+    // Check if we're at the start of a line
+    const lastNewline = before.lastIndexOf('\n');
+    const lineStart = lastNewline === -1 ? 0 : lastNewline + 1;
+    const isAtLineStart = start === lineStart;
+    
+    let newContent: string;
+    let cursorPos: number;
+
+    if (isAtLineStart || before === '' || before.endsWith('\n')) {
+      // At line start, just add prefix
+      newContent = before + prefix + selectedText + after;
+      cursorPos = start + prefix.length + selectedText.length;
+    } else {
+      // Mid-line, add newline first
+      newContent = before + '\n' + prefix + selectedText + after;
+      cursorPos = start + 1 + prefix.length + selectedText.length;
+    }
+
+    onContentChange(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(cursorPos, cursorPos);
+    }, 10);
+  };
+
+  const handleBold = () => wrapSelection('**', '**', 'bold text');
+  const handleItalic = () => wrapSelection('*', '*', 'italic text');
+  const handleStrikethrough = () => wrapSelection('~~', '~~', 'strikethrough');
+  const handleCode = () => wrapSelection('`', '`', 'code');
+  
+  const handleH1 = () => insertLinePrefix('# ');
+  const handleH2 = () => insertLinePrefix('## ');
+  const handleH3 = () => insertLinePrefix('### ');
+  const handleBulletList = () => insertLinePrefix('- ');
+  const handleNumberedList = () => insertLinePrefix('1. ');
+  const handleCheckbox = () => insertLinePrefix('- [ ] ');
+  const handleQuote = () => insertLinePrefix('> ');
+
+  const handleHorizontalRule = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const before = content.substring(0, start);
+    const after = content.substring(start);
+
+    const needsNewlineBefore = before.length > 0 && !before.endsWith('\n');
+    const insertion = (needsNewlineBefore ? '\n' : '') + '---\n';
+    
+    const newContent = before + insertion + after;
+    onContentChange(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = start + insertion.length;
+      textarea.setSelectionRange(newPos, newPos);
+    }, 10);
+  };
+
+  const handleLink = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    const before = content.substring(0, start);
+    const after = content.substring(end);
+
+    if (selectedText) {
+      const newContent = before + '[' + selectedText + '](url)' + after;
+      onContentChange(newContent);
+      setTimeout(() => {
+        textarea.focus();
+        // Select "url" for easy replacement
+        const urlStart = start + selectedText.length + 3;
+        textarea.setSelectionRange(urlStart, urlStart + 3);
+      }, 10);
+    } else {
+      const newContent = before + '[link text](url)' + after;
+      onContentChange(newContent);
+      setTimeout(() => {
+        textarea.focus();
+        // Select "link text" for easy replacement
+        textarea.setSelectionRange(start + 1, start + 10);
+      }, 10);
+    }
+  };
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -258,9 +197,8 @@ export function MarkdownToolbar({
     const fileName = file.name.replace(/\.[^/.]+$/, '');
     
     const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
     const before = content.substring(0, start);
-    const after = content.substring(end);
+    const after = content.substring(start);
     
     const imageMarkdown = `![${fileName}](${imageUrl})`;
     const newContent = before + imageMarkdown + after;
@@ -273,28 +211,28 @@ export function MarkdownToolbar({
       textarea.focus();
       const newPos = start + imageMarkdown.length;
       textarea.setSelectionRange(newPos, newPos);
-    }, 0);
+    }, 10);
   };
 
   const tools = [
-    { action: 'h1' as FormatAction, icon: Heading1, label: 'Heading 1' },
-    { action: 'h2' as FormatAction, icon: Heading2, label: 'Heading 2' },
-    { action: 'h3' as FormatAction, icon: Heading3, label: 'Heading 3' },
+    { action: handleH1, icon: Heading1, label: 'Heading 1' },
+    { action: handleH2, icon: Heading2, label: 'Heading 2' },
+    { action: handleH3, icon: Heading3, label: 'Heading 3' },
     { type: 'separator' },
-    { action: 'bold' as FormatAction, icon: Bold, label: 'Bold (Ctrl+B)' },
-    { action: 'italic' as FormatAction, icon: Italic, label: 'Italic (Ctrl+I)' },
-    { action: 'strikethrough' as FormatAction, icon: Strikethrough, label: 'Strikethrough' },
+    { action: handleBold, icon: Bold, label: 'Bold' },
+    { action: handleItalic, icon: Italic, label: 'Italic' },
+    { action: handleStrikethrough, icon: Strikethrough, label: 'Strikethrough' },
     { type: 'separator' },
-    { action: 'ul' as FormatAction, icon: List, label: 'Bullet List' },
-    { action: 'ol' as FormatAction, icon: ListOrdered, label: 'Numbered List' },
-    { action: 'checkbox' as FormatAction, icon: CheckSquare, label: 'Checkbox' },
+    { action: handleBulletList, icon: List, label: 'Bullet List' },
+    { action: handleNumberedList, icon: ListOrdered, label: 'Numbered List' },
+    { action: handleCheckbox, icon: CheckSquare, label: 'Checkbox' },
     { type: 'separator' },
-    { action: 'code' as FormatAction, icon: Code, label: 'Inline Code' },
-    { action: 'quote' as FormatAction, icon: Quote, label: 'Quote' },
-    { action: 'hr' as FormatAction, icon: Minus, label: 'Horizontal Rule' },
+    { action: handleCode, icon: Code, label: 'Inline Code' },
+    { action: handleQuote, icon: Quote, label: 'Quote' },
+    { action: handleHorizontalRule, icon: Minus, label: 'Horizontal Rule' },
     { type: 'separator' },
-    { action: 'link' as FormatAction, icon: Link, label: 'Link' },
-    { action: 'image' as FormatAction, icon: Image, label: 'Insert Image' },
+    { action: handleLink, icon: Link, label: 'Link' },
+    { action: handleImageClick, icon: Image, label: 'Insert Image' },
   ];
 
   return (
@@ -344,14 +282,17 @@ export function MarkdownToolbar({
           
           const Icon = tool.icon!;
           return (
-            <Tooltip key={tool.action}>
+            <Tooltip key={tool.label}>
               <TooltipTrigger asChild>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
-                  onClick={() => insertFormat(tool.action!)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    tool.action!();
+                  }}
                 >
                   <Icon className="h-4 w-4" />
                 </Button>
