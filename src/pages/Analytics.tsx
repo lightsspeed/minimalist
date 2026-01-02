@@ -325,53 +325,29 @@ export default function Analytics() {
                 </CardContent>
               </Card>}
 
-            {/* Quick Stats with Context */}
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="hover:bg-hover-blue transition-colors">
-                <CardContent className="pt-5 pb-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2.5 bg-primary/10 rounded-xl">
-                      <Target className="h-5 w-5 text-primary" />
-                    </div>
-                    <span className="text-sm font-medium text-muted-foreground">Today</span>
+            {/* This Week Stats */}
+            <Card className="hover:bg-hover-blue transition-colors">
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2.5 bg-success/10 rounded-xl">
+                    <TrendingUp className="h-5 w-5 text-success" />
                   </div>
-                  <p className="text-2xl font-bold mb-1">
-                    <AnimatedNumber value={quickStats.todayCompleted} duration={800} />
-                    <span className="text-muted-foreground font-normal">/{quickStats.todayTotal}</span>
-                    <span className="text-sm font-normal text-muted-foreground ml-1">tasks</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {quickStats.todayRemaining} remaining
-                    {quickStats.todaySubtasksTotal > 0 && (
-                      <span className="ml-2">• {quickStats.todaySubtasksCompleted}/{quickStats.todaySubtasksTotal} subtasks</span>
-                    )}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:bg-hover-blue transition-colors">
-                <CardContent className="pt-5 pb-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2.5 bg-success/10 rounded-xl">
-                      <TrendingUp className="h-5 w-5 text-success" />
-                    </div>
-                    <span className="text-sm font-medium text-muted-foreground">This Week</span>
-                  </div>
-                  <p className="text-2xl font-bold mb-1">
-                    <AnimatedNumber value={quickStats.weekCompleted} duration={800} />
-                    <span className="text-muted-foreground font-normal">/{quickStats.weekTotal}</span>
-                    <span className="text-sm font-normal text-muted-foreground ml-1">completed</span>
-                  </p>
-                  <p className="text-xs flex items-center gap-1">
-                    {quickStats.weekDiff >= 0 ? <TrendingUp className="h-3 w-3 text-success" /> : <TrendingDown className="h-3 w-3 text-destructive" />}
-                    <span className={quickStats.weekDiff >= 0 ? 'text-success' : 'text-destructive'}>
-                      {quickStats.weekDiff >= 0 ? '+' : ''}{quickStats.weekDiff}
-                    </span>
-                    <span className="text-muted-foreground">from last week</span>
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                  <span className="text-sm font-medium text-muted-foreground">This Week</span>
+                </div>
+                <p className="text-2xl font-bold mb-1">
+                  <AnimatedNumber value={quickStats.weekCompleted} duration={800} />
+                  <span className="text-muted-foreground font-normal">/{quickStats.weekTotal}</span>
+                  <span className="text-sm font-normal text-muted-foreground ml-1">completed</span>
+                </p>
+                <p className="text-xs flex items-center gap-1">
+                  {quickStats.weekDiff >= 0 ? <TrendingUp className="h-3 w-3 text-success" /> : <TrendingDown className="h-3 w-3 text-destructive" />}
+                  <span className={quickStats.weekDiff >= 0 ? 'text-success' : 'text-destructive'}>
+                    {quickStats.weekDiff >= 0 ? '+' : ''}{quickStats.weekDiff}
+                  </span>
+                  <span className="text-muted-foreground">from last week</span>
+                </p>
+              </CardContent>
+            </Card>
 
             {/* Productivity Streak */}
             {streak > 0 && <Card className="bg-gradient-to-r from-orange-500/10 to-yellow-500/10 border-orange-500/20">
