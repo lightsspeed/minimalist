@@ -391,8 +391,8 @@ export default function Planning() {
     );
   };
 
-  // Quick add form component
-  const QuickAddForm = ({ showDateRequired = false }: { showDateRequired?: boolean }) => (
+  // Quick add form JSX - inlined to prevent re-render issues
+  const renderQuickAddForm = (showDateRequired = false) => (
     <div className="p-3 border rounded-lg bg-muted/30 space-y-3">
       <div className="flex gap-2">
         <Input
@@ -599,7 +599,7 @@ export default function Planning() {
                   ) : (
                     <div className="space-y-2 sm:space-y-3">
                       {/* Quick Add Form */}
-                      {showQuickAdd && <QuickAddForm />}
+                      {showQuickAdd && renderQuickAddForm()}
                       
                       {/* Task List */}
                       {filteredTasks.length > 0 && (
@@ -633,7 +633,7 @@ export default function Planning() {
                 {showQuickAdd && (
                   <Card>
                     <CardContent className="pt-3 sm:pt-4 pb-3 sm:pb-4 px-3 sm:px-6">
-                      <QuickAddForm showDateRequired />
+                      {renderQuickAddForm(true)}
                     </CardContent>
                   </Card>
                 )}

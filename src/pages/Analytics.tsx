@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
-import { ListTodo, CircleCheck, Clock, BarChart3, AlertTriangle, TrendingUp, TrendingDown, Flame, Plus, Target, Zap, Award, CheckCircle2 } from 'lucide-react';
+import { ListTodo, CircleCheck, Clock, BarChart3, AlertTriangle, TrendingUp, TrendingDown, Flame, Plus, Target, Zap, Award, CheckCircle2, CalendarDays } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { useTasks } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
 import { subDays, subMonths, isAfter, isBefore, format, startOfWeek, startOfMonth, differenceInDays, startOfDay } from 'date-fns';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
+import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 
 type TimePeriod = 'day' | 'week' | 'month' | 'year';
 
@@ -410,6 +411,19 @@ export default function Analytics() {
                     {weeklyTrend.trend >= 0 ? '+' : ''}{weeklyTrend.trend}
                   </span>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Activity Heatmap */}
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-3 pt-5">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-primary" />
+                  Activity Heatmap
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-5">
+                <ActivityHeatmap tasks={tasks} subtasks={subtasks} months={4} />
               </CardContent>
             </Card>
 
