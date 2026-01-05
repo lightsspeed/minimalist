@@ -304,7 +304,13 @@ export default function Planning() {
       .map(([date, tasks]) => ({
         date,
         label: format(new Date(date), view === 'week' ? 'EEEE, MMM d' : 'MMM d'),
-        tasks: tasks.sort((a, b) => (a.is_completed ? 1 : 0) - (b.is_completed ? 1 : 0))
+        tasks: [...tasks].sort((a, b) => {
+          // First sort by completion status (pending first, completed last)
+          const completionDiff = (a.is_completed ? 1 : 0) - (b.is_completed ? 1 : 0);
+          if (completionDiff !== 0) return completionDiff;
+          // Then sort by due date time
+          return new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime();
+        })
       }));
   }, [filteredTasks, view]);
 
