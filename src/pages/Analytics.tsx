@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { 
-  CheckCircle2, Clock, Flame, TrendingUp, TrendingDown, 
+  CheckCircle2, Flame, TrendingUp, TrendingDown, 
   Target, ChevronDown, Lightbulb, BarChart3, CalendarDays
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,15 +61,45 @@ export default function Analytics() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // Available years (from 2020 to current year + 1)
-  const availableYears = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    const years: number[] = [];
-    for (let y = 2020; y <= currentYear + 1; y++) {
-      years.push(y);
-    }
-    return years;
-  }, []);
+  // Available months and years based on actual task data
+  const { availableMonths, availableYears } = useMemo(() => {
+    const monthsSet = new Set<string>();
+    const yearsSet = new Set<number>();
+    
+    // Collect all dates from tasks (created_at and completed_at)
+    const allDates: Date[] = [];
+    tasks.forEach(t => {
+      if (!t.is_template) {
+        allDates.push(new Date(t.created_at));
+        if (t.completed_at) {
+          allDates.push(new Date(t.completed_at));
+        }
+      }
+    });
+    
+    allDates.forEach(date => {
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      yearsSet.add(year);
+      monthsSet.add(`${year}-${month}`);
+    });
+    
+    // Always include current month/year
+    const now = new Date();
+    yearsSet.add(now.getFullYear());
+    monthsSet.add(`${now.getFullYear()}-${now.getMonth()}`);
+    
+    const sortedYears = Array.from(yearsSet).sort((a, b) => b - a);
+    const monthsArray = Array.from(monthsSet).map(key => {
+      const [year, month] = key.split('-').map(Number);
+      return { year, month };
+    });
+    
+    return { 
+      availableMonths: monthsArray,
+      availableYears: sortedYears 
+    };
+  }, [tasks]);
 
   useEffect(() => {
     const fetchSubtasks = async () => {
@@ -184,11 +214,8 @@ export default function Analytics() {
     });
 
     const totalCompleted = periodTasks.length + periodSubtasks.length;
-    
-    // Estimate hours (assume 0.5 hours per task/subtask average)
-    const hoursLogged = Math.round((totalCompleted * 0.5) * 10) / 10;
 
-    return { completed: totalCompleted, hours: hoursLogged };
+    return { completed: totalCompleted };
   };
 
   // Current and previous period metrics
@@ -201,10 +228,6 @@ export default function Analytics() {
       ? Math.round(((current.completed - previous.completed) / previous.completed) * 100)
       : current.completed > 0 ? 100 : 0;
 
-    const hoursChange = previous.hours > 0
-      ? Math.round(((current.hours - previous.hours) / previous.hours) * 100)
-      : current.hours > 0 ? 100 : 0;
-
     // Total tasks for completion rate
     const allTasks = tasks.filter(t => !t.is_template);
     const completedTasks = allTasks.filter(t => t.is_completed);
@@ -215,8 +238,6 @@ export default function Analytics() {
     return {
       completed: current.completed,
       completedChange,
-      hours: current.hours,
-      hoursChange,
       streak,
       completionRate
     };
@@ -236,7 +257,7 @@ export default function Analytics() {
 
     switch (period) {
       case 'today': {
-        const data: { label: string; count: number; hours: number }[] = [];
+        const data: { label: string; count: number }[] = [];
         for (let i = 0; i < 24; i++) {
           const hourStart = new Date(currentStart);
           hourStart.setHours(i, 0, 0, 0);
@@ -246,7 +267,7 @@ export default function Analytics() {
             const completed = new Date(item.completed_at);
             return completed >= hourStart && completed < hourEnd;
           }).length;
-          data.push({ label: format(hourStart, 'ha'), count, hours: count * 0.5 });
+          data.push({ label: format(hourStart, 'ha'), count });
         }
         return data;
       }
@@ -258,7 +279,7 @@ export default function Analytics() {
           const count = completedItems.filter(item => 
             format(new Date(item.completed_at), 'yyyy-MM-dd') === dateStr
           ).length;
-          return { label: format(day, 'EEE'), count, hours: count * 0.5 };
+          return { label: format(day, 'EEE'), count };
         });
       }
       case 'thisMonth': {
@@ -269,7 +290,7 @@ export default function Analytics() {
             const completed = new Date(item.completed_at);
             return completed >= weekStart && completed <= weekEnd;
           }).length;
-          return { label: `Week ${idx + 1}`, count, hours: count * 0.5 };
+          return { label: `Week ${idx + 1}`, count };
         });
       }
       case 'thisYear': {
@@ -281,7 +302,7 @@ export default function Analytics() {
             const completed = new Date(item.completed_at);
             return completed >= monthStart && completed <= actualEnd;
           }).length;
-          return { label: format(monthStart, 'MMM'), count, hours: count * 0.5 };
+          return { label: format(monthStart, 'MMM'), count };
         });
       }
     }
@@ -290,7 +311,7 @@ export default function Analytics() {
   // Last 4 weeks comparison (for week view)
   const weeklyComparison = useMemo(() => {
     const now = new Date();
-    const weeks: { label: string; completed: number; hours: number }[] = [];
+    const weeks: { label: string; completed: number }[] = [];
     
     for (let i = 3; i >= 0; i--) {
       const weekStart = startOfWeek(subDays(now, i * 7), { weekStartsOn: 1 });
@@ -302,8 +323,7 @@ export default function Analytics() {
       }).length;
       weeks.push({ 
         label: i === 0 ? 'This week' : i === 1 ? 'Last week' : `${i} weeks ago`,
-        completed, 
-        hours: completed * 0.5 
+        completed
       });
     }
     
@@ -447,16 +467,19 @@ export default function Analytics() {
                         <ChevronDown className="h-4 w-4 opacity-50" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-36 max-h-64 overflow-y-auto">
-                      {monthNames.map((month, idx) => (
-                        <DropdownMenuItem 
-                          key={month} 
-                          onClick={() => setSelectedMonth(idx)}
-                          className={selectedMonth === idx ? 'bg-accent' : ''}
-                        >
-                          {month}
-                        </DropdownMenuItem>
-                      ))}
+                    <DropdownMenuContent align="end" className="w-36 max-h-64 overflow-y-auto bg-popover">
+                      {availableMonths
+                        .filter(m => m.year === selectedYear)
+                        .sort((a, b) => b.month - a.month)
+                        .map(({ month }) => (
+                          <DropdownMenuItem 
+                            key={month} 
+                            onClick={() => setSelectedMonth(month)}
+                            className={selectedMonth === month ? 'bg-accent' : ''}
+                          >
+                            {monthNames[month]}
+                          </DropdownMenuItem>
+                        ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
@@ -470,11 +493,18 @@ export default function Analytics() {
                         <ChevronDown className="h-4 w-4 opacity-50" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-28 max-h-64 overflow-y-auto">
+                    <DropdownMenuContent align="end" className="w-28 max-h-64 overflow-y-auto bg-popover">
                       {availableYears.map(year => (
                         <DropdownMenuItem 
                           key={year} 
-                          onClick={() => setSelectedYear(year)}
+                          onClick={() => {
+                            setSelectedYear(year);
+                            // Reset month to first available month in that year
+                            const monthsInYear = availableMonths.filter(m => m.year === year);
+                            if (monthsInYear.length > 0 && !monthsInYear.some(m => m.month === selectedMonth)) {
+                              setSelectedMonth(monthsInYear[0].month);
+                            }
+                          }}
                           className={selectedYear === year ? 'bg-accent' : ''}
                         >
                           {year}
@@ -508,20 +538,13 @@ export default function Analytics() {
             </div>
 
             {/* Metric Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
               <MetricCard 
                 id="completed"
                 title="Tasks Completed" 
                 value={metrics.completed} 
                 change={metrics.completedChange}
                 icon={CheckCircle2}
-              />
-              <MetricCard 
-                id="hours"
-                title="Hours Logged" 
-                value={metrics.hours}
-                change={metrics.hoursChange}
-                icon={Clock}
               />
               <MetricCard 
                 id="streak"
@@ -586,7 +609,7 @@ export default function Analytics() {
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>{item.count} tasks, ~{item.hours}h</p>
+                            <p>{item.count} tasks completed</p>
                           </TooltipContent>
                         </Tooltip>
                       ))}
@@ -660,7 +683,7 @@ export default function Analytics() {
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>{item.count} tasks, ~{item.hours}h</p>
+                            <p>{item.count} tasks completed</p>
                           </TooltipContent>
                         </Tooltip>
                       ))}
