@@ -1,19 +1,35 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
-import { ListTodo, CircleCheck, Clock, BarChart3, AlertTriangle, TrendingUp, TrendingDown, Flame, Plus, Target, Zap, Award, CheckCircle2, CalendarDays } from 'lucide-react';
+import { 
+  CheckCircle2, Clock, Flame, TrendingUp, TrendingDown, 
+  Target, ChevronDown, Lightbulb, BarChart3, CalendarDays
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
-import { subDays, subMonths, isAfter, isBefore, format, startOfWeek, startOfMonth, differenceInDays, startOfDay } from 'date-fns';
+import { 
+  subDays, subMonths, subYears, startOfWeek, startOfMonth, startOfYear,
+  endOfWeek, endOfMonth, format, differenceInDays, isBefore, isAfter,
+  eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval
+} from 'date-fns';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-type TimePeriod = 'day' | 'week' | 'month' | 'year';
+type TimePeriod = 'today' | 'last7days' | 'thisWeek' | 'thisMonth' | 'thisYear';
 
 interface Subtask {
   id: string;
@@ -22,18 +38,21 @@ interface Subtask {
   created_at: string;
 }
 
-interface OverdueTask {
-  id: string;
-  title: string;
-  daysOverdue: number;
-}
+const periodLabels: Record<TimePeriod, string> = {
+  today: 'Today',
+  last7days: 'Last 7 days',
+  thisWeek: 'This Week',
+  thisMonth: 'This Month',
+  thisYear: 'This Year'
+};
 
 export default function Analytics() {
   const { user, loading: authLoading } = useAuth();
   const { tasks, loading: tasksLoading } = useTasks();
-  const [period, setPeriod] = useState<TimePeriod>('week');
+  const [period, setPeriod] = useState<TimePeriod>('last7days');
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [subtasksLoading, setSubtasksLoading] = useState(true);
+  const [expandedMetric, setExpandedMetric] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSubtasks = async () => {
@@ -64,23 +83,52 @@ export default function Analytics() {
     }
   }, [user, tasks, tasksLoading]);
 
-  const overdueTasks = useMemo((): OverdueTask[] => {
+  // Get date ranges for current and previous periods
+  const dateRanges = useMemo(() => {
     const now = new Date();
-    return tasks
-      .filter(t => !t.is_template && !t.is_completed && t.due_date && isBefore(new Date(t.due_date), now))
-      .map(t => ({
-        id: t.id,
-        title: t.title,
-        daysOverdue: differenceInDays(now, new Date(t.due_date!))
-      }))
-      .sort((a, b) => b.daysOverdue - a.daysOverdue)
-      .slice(0, 5);
-  }, [tasks]);
+    let currentStart: Date, currentEnd: Date, prevStart: Date, prevEnd: Date;
 
+    switch (period) {
+      case 'today':
+        currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        currentEnd = now;
+        prevStart = subDays(currentStart, 1);
+        prevEnd = new Date(prevStart.getFullYear(), prevStart.getMonth(), prevStart.getDate(), 23, 59, 59);
+        break;
+      case 'last7days':
+        currentStart = subDays(now, 6);
+        currentEnd = now;
+        prevStart = subDays(currentStart, 7);
+        prevEnd = subDays(currentEnd, 7);
+        break;
+      case 'thisWeek':
+        currentStart = startOfWeek(now, { weekStartsOn: 1 });
+        currentEnd = now;
+        prevStart = startOfWeek(subDays(currentStart, 1), { weekStartsOn: 1 });
+        prevEnd = endOfWeek(prevStart, { weekStartsOn: 1 });
+        break;
+      case 'thisMonth':
+        currentStart = startOfMonth(now);
+        currentEnd = now;
+        prevStart = startOfMonth(subMonths(now, 1));
+        prevEnd = endOfMonth(prevStart);
+        break;
+      case 'thisYear':
+        currentStart = startOfYear(now);
+        currentEnd = now;
+        prevStart = startOfYear(subYears(now, 1));
+        prevEnd = new Date(prevStart.getFullYear(), 11, 31, 23, 59, 59);
+        break;
+    }
+
+    return { currentStart, currentEnd, prevStart, prevEnd };
+  }, [period]);
+
+  // Calculate streak
   const streak = useMemo(() => {
     const now = new Date();
     let currentStreak = 0;
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 365; i++) {
       const checkDate = subDays(now, i);
       const dateStr = format(checkDate, 'yyyy-MM-dd');
       const completedOnDay = tasks.some(t => t.completed_at && format(new Date(t.completed_at), 'yyyy-MM-dd') === dateStr);
@@ -93,62 +141,63 @@ export default function Analytics() {
     return currentStreak;
   }, [tasks]);
 
-  const weeklyPriorities = useMemo(() => {
-    const weekEnd = subDays(startOfWeek(new Date()), -7);
-    return tasks
-      .filter(t => !t.is_template && !t.is_completed && (t.is_pinned || (t.due_date && isBefore(new Date(t.due_date), weekEnd))))
-      .slice(0, 5);
-  }, [tasks]);
+  // Calculate metrics for a period
+  const calculateMetrics = (start: Date, end: Date) => {
+    const periodTasks = tasks.filter(t => {
+      if (t.is_template) return false;
+      if (!t.completed_at) return false;
+      const completedDate = new Date(t.completed_at);
+      return completedDate >= start && completedDate <= end;
+    });
 
-  const stats = useMemo(() => {
-    const totalTasks = tasks.filter(t => !t.is_template).length;
-    const totalSubtasks = subtasks.length;
-    const total = totalTasks + totalSubtasks;
-    const completedTasks = tasks.filter(t => t.is_completed && !t.is_template).length;
-    const completedSubtasks = subtasks.filter(s => s.is_completed).length;
-    const completed = completedTasks + completedSubtasks;
-    const incompleteTasks = tasks.filter(t => !t.is_completed && !t.is_template);
-    const toDo = incompleteTasks.length;
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const periodSubtasks = subtasks.filter(s => {
+      if (!s.is_completed) return false;
+      const completedDate = new Date(s.created_at);
+      return completedDate >= start && completedDate <= end;
+    });
+
+    const totalCompleted = periodTasks.length + periodSubtasks.length;
+    
+    // Estimate hours (assume 0.5 hours per task/subtask average)
+    const hoursLogged = Math.round((totalCompleted * 0.5) * 10) / 10;
+
+    return { completed: totalCompleted, hours: hoursLogged };
+  };
+
+  // Current and previous period metrics
+  const metrics = useMemo(() => {
+    const { currentStart, currentEnd, prevStart, prevEnd } = dateRanges;
+    const current = calculateMetrics(currentStart, currentEnd);
+    const previous = calculateMetrics(prevStart, prevEnd);
+
+    const completedChange = previous.completed > 0 
+      ? Math.round(((current.completed - previous.completed) / previous.completed) * 100)
+      : current.completed > 0 ? 100 : 0;
+
+    const hoursChange = previous.hours > 0
+      ? Math.round(((current.hours - previous.hours) / previous.hours) * 100)
+      : current.hours > 0 ? 100 : 0;
+
+    // Total tasks for completion rate
+    const allTasks = tasks.filter(t => !t.is_template);
+    const completedTasks = allTasks.filter(t => t.is_completed);
+    const completionRate = allTasks.length > 0 
+      ? Math.round((completedTasks.length / allTasks.length) * 100)
+      : 0;
 
     return {
-      total,
-      totalTasks,
-      totalSubtasks,
-      completed,
-      completedTasks,
-      completedSubtasks,
-      toDo,
+      completed: current.completed,
+      completedChange,
+      hours: current.hours,
+      hoursChange,
+      streak,
       completionRate
     };
-  }, [tasks, subtasks]);
+  }, [dateRanges, tasks, subtasks, streak]);
 
-  const weeklyTrend = useMemo(() => {
-    const now = new Date();
-    const weeks: { label: string; completed: number }[] = [];
-    for (let i = 3; i >= 0; i--) {
-      const weekStart = startOfWeek(subDays(now, i * 7));
-      const weekEnd = i === 0 ? now : subDays(startOfWeek(subDays(now, (i - 1) * 7)), 1);
-      const completed = tasks.filter(t => {
-        if (!t.completed_at || t.is_template) return false;
-        const completedDate = new Date(t.completed_at);
-        return completedDate >= weekStart && completedDate <= weekEnd;
-      }).length;
-      weeks.push({ label: `Week ${4 - i}`, completed });
-    }
-    const avgCompleted = weeks.reduce((sum, w) => sum + w.completed, 0) / weeks.length;
-    const prevAvg = (weeks[0].completed + weeks[1].completed) / 2;
-    const currAvg = (weeks[2].completed + weeks[3].completed) / 2;
-    const trend = currAvg - prevAvg;
-    return {
-      weeks,
-      avgCompleted: Math.round(avgCompleted * 10) / 10,
-      trend: Math.round(trend * 10) / 10
-    };
-  }, [tasks]);
-
+  // Generate chart data based on period
   const chartData = useMemo(() => {
-    const now = new Date();
+    const { currentStart, currentEnd } = dateRanges;
     const completedItems = [
       ...tasks.filter(t => !t.is_template && t.is_completed).map(t => ({
         completed_at: t.completed_at || t.created_at
@@ -159,61 +208,108 @@ export default function Analytics() {
     ];
 
     switch (period) {
-      case 'day': {
-        const data: { label: string; count: number }[] = [];
-        for (let i = 11; i >= 0; i--) {
-          const hour = new Date(now);
-          hour.setHours(now.getHours() - i, 0, 0, 0);
-          const nextHour = new Date(hour);
-          nextHour.setHours(hour.getHours() + 1);
+      case 'today': {
+        const data: { label: string; count: number; hours: number }[] = [];
+        for (let i = 0; i < 24; i++) {
+          const hourStart = new Date(currentStart);
+          hourStart.setHours(i, 0, 0, 0);
+          const hourEnd = new Date(hourStart);
+          hourEnd.setHours(i + 1, 0, 0, 0);
           const count = completedItems.filter(item => {
             const completed = new Date(item.completed_at);
-            return completed >= hour && completed < nextHour;
+            return completed >= hourStart && completed < hourEnd;
           }).length;
-          data.push({ label: format(hour, 'ha'), count });
+          data.push({ label: format(hourStart, 'ha'), count, hours: count * 0.5 });
         }
         return data;
       }
-      case 'week': {
-        const data: { label: string; count: number }[] = [];
-        for (let i = 6; i >= 0; i--) {
-          const date = subDays(now, i);
-          const dateStr = format(date, 'yyyy-MM-dd');
-          const count = completedItems.filter(item => format(new Date(item.completed_at), 'yyyy-MM-dd') === dateStr).length;
-          data.push({ label: format(date, 'EEE'), count });
-        }
-        return data;
+      case 'last7days':
+      case 'thisWeek': {
+        const days = eachDayOfInterval({ start: currentStart, end: currentEnd });
+        return days.map(day => {
+          const dateStr = format(day, 'yyyy-MM-dd');
+          const count = completedItems.filter(item => 
+            format(new Date(item.completed_at), 'yyyy-MM-dd') === dateStr
+          ).length;
+          return { label: format(day, 'EEE'), count, hours: count * 0.5 };
+        });
       }
-      case 'month': {
-        const data: { label: string; count: number }[] = [];
-        for (let i = 3; i >= 0; i--) {
-          const weekStart = startOfWeek(subDays(now, i * 7));
-          const weekEnd = subDays(startOfWeek(subDays(now, (i - 1) * 7)), 1);
+      case 'thisMonth': {
+        const weeks = eachWeekOfInterval({ start: currentStart, end: currentEnd }, { weekStartsOn: 1 });
+        return weeks.map((weekStart, idx) => {
+          const weekEnd = idx === weeks.length - 1 ? currentEnd : subDays(weeks[idx + 1], 1);
           const count = completedItems.filter(item => {
             const completed = new Date(item.completed_at);
-            return completed >= weekStart && completed <= (i === 0 ? now : weekEnd);
+            return completed >= weekStart && completed <= weekEnd;
           }).length;
-          data.push({ label: `Week ${4 - i}`, count });
-        }
-        return data;
+          return { label: `Week ${idx + 1}`, count, hours: count * 0.5 };
+        });
       }
-      case 'year': {
-        const data: { label: string; count: number }[] = [];
-        for (let i = 11; i >= 0; i--) {
-          const monthStart = startOfMonth(subMonths(now, i));
-          const monthEnd = i === 0 ? now : subDays(startOfMonth(subMonths(now, i - 1)), 1);
+      case 'thisYear': {
+        const months = eachMonthOfInterval({ start: currentStart, end: currentEnd });
+        return months.map(monthStart => {
+          const monthEnd = endOfMonth(monthStart);
+          const actualEnd = monthEnd > currentEnd ? currentEnd : monthEnd;
           const count = completedItems.filter(item => {
             const completed = new Date(item.completed_at);
-            return completed >= monthStart && completed <= monthEnd;
+            return completed >= monthStart && completed <= actualEnd;
           }).length;
-          data.push({ label: format(monthStart, 'MMM'), count });
-        }
-        return data;
+          return { label: format(monthStart, 'MMM'), count, hours: count * 0.5 };
+        });
       }
     }
-  }, [tasks, subtasks, period]);
+  }, [period, dateRanges, tasks, subtasks]);
 
-  const maxCount = Math.max(...chartData.map(d => d.count), 1);
+  // Last 4 weeks comparison (for week view)
+  const weeklyComparison = useMemo(() => {
+    const now = new Date();
+    const weeks: { label: string; completed: number; hours: number }[] = [];
+    
+    for (let i = 3; i >= 0; i--) {
+      const weekStart = startOfWeek(subDays(now, i * 7), { weekStartsOn: 1 });
+      const weekEnd = i === 0 ? now : endOfWeek(weekStart, { weekStartsOn: 1 });
+      const completed = tasks.filter(t => {
+        if (!t.completed_at || t.is_template) return false;
+        const completedDate = new Date(t.completed_at);
+        return completedDate >= weekStart && completedDate <= weekEnd;
+      }).length;
+      weeks.push({ 
+        label: i === 0 ? 'This week' : i === 1 ? 'Last week' : `${i} weeks ago`,
+        completed, 
+        hours: completed * 0.5 
+      });
+    }
+    
+    return weeks;
+  }, [tasks]);
+
+  // Insights based on data
+  const insights = useMemo(() => {
+    const insightsList: string[] = [];
+    
+    if (metrics.completedChange > 20) {
+      insightsList.push(`Great momentum! You completed ${metrics.completedChange}% more tasks than the previous period.`);
+    } else if (metrics.completedChange < -20) {
+      insightsList.push(`Your productivity dipped ${Math.abs(metrics.completedChange)}%. Consider breaking tasks into smaller pieces.`);
+    }
+
+    if (streak >= 7) {
+      insightsList.push(`Amazing ${streak}-day streak! Consistency is your superpower.`);
+    } else if (streak === 0) {
+      insightsList.push('Start a new streak today by completing one small task.');
+    }
+
+    if (metrics.completionRate >= 80) {
+      insightsList.push('Excellent completion rate! You\'re crushing your goals.');
+    } else if (metrics.completionRate < 50) {
+      insightsList.push('Try prioritizing fewer tasks each day to improve your completion rate.');
+    }
+
+    return insightsList.slice(0, 2);
+  }, [metrics, streak]);
+
+  const maxChartValue = Math.max(...chartData.map(d => d.count), 1);
+  const maxWeeklyValue = Math.max(...weeklyComparison.map(w => w.completed), 1);
 
   if (authLoading) {
     return (
@@ -229,194 +325,300 @@ export default function Analytics() {
 
   const isLoading = tasksLoading || subtasksLoading;
 
+  const MetricCard = ({ 
+    title, 
+    value, 
+    suffix = '', 
+    change, 
+    icon: Icon,
+    id 
+  }: { 
+    title: string; 
+    value: number; 
+    suffix?: string; 
+    change?: number; 
+    icon: React.ElementType;
+    id: string;
+  }) => (
+    <Card 
+      className={`bg-card border border-border/50 transition-all duration-300 cursor-pointer hover:border-border ${
+        expandedMetric === id ? 'ring-2 ring-primary/20' : ''
+      }`}
+      onClick={() => setExpandedMetric(expandedMetric === id ? null : id)}
+    >
+      <CardContent className="p-4 sm:p-5">
+        <div className="flex items-start justify-between mb-2">
+          <Icon className="h-5 w-5 text-muted-foreground" />
+          {change !== undefined && (
+            <span className={`text-xs font-medium flex items-center gap-0.5 ${
+              change >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'
+            }`}>
+              {change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+              {change >= 0 ? '+' : ''}{change}%
+            </span>
+          )}
+        </div>
+        <p className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
+          <AnimatedNumber value={value} duration={800} suffix={suffix} />
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">{title}</p>
+      </CardContent>
+    </Card>
+  );
+
+  const HorizontalBar = ({ 
+    label, 
+    value, 
+    maxValue, 
+    showValue = true 
+  }: { 
+    label: string; 
+    value: number; 
+    maxValue: number; 
+    showValue?: boolean;
+  }) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="group cursor-pointer">
+          <div className="flex items-center justify-between text-sm mb-1.5">
+            <span className="text-muted-foreground">{label}</span>
+            {showValue && <span className="font-medium text-foreground">{value}</span>}
+          </div>
+          <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-primary rounded-full transition-all duration-500 group-hover:bg-primary/80"
+              style={{ width: `${maxValue > 0 ? (value / maxValue) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{value} tasks completed</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+
   return (
-    <div className="min-h-screen bg-background transition-theme">
+    <div className="min-h-screen bg-background transition-all duration-300">
       <NavBar />
 
       <main className="container max-w-4xl mx-auto px-4 py-6 sm:py-8">
         {isLoading ? (
           <div className="text-center py-12 text-muted-foreground">Loading analytics...</div>
         ) : (
-          <div className="space-y-6">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Your Progress</h1>
-              <p className="text-muted-foreground text-sm sm:text-base">Track your productivity and stay motivated</p>
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Header with Period Selector */}
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">Analytics</h1>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2 text-sm">
+                    {periodLabels[period]}
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  {(Object.keys(periodLabels) as TimePeriod[]).map(p => (
+                    <DropdownMenuItem 
+                      key={p} 
+                      onClick={() => setPeriod(p)}
+                      className={period === p ? 'bg-accent' : ''}
+                    >
+                      {periodLabels[p]}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
-            {/* Hero Stats - Main Focus */}
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20 overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <CardContent className="pt-6 pb-5">
-                  <div className="flex flex-col">
-                    <div className="p-2.5 bg-primary/15 rounded-xl w-fit mb-3">
-                      <CircleCheck className="h-5 w-5 text-primary" />
-                    </div>
-                    <p className="text-3xl sm:text-4xl font-bold text-foreground">
-                      <AnimatedNumber value={stats.completionRate} duration={800} suffix="%" />
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">Completion Rate</p>
-                    <p className="text-xs text-muted-foreground/70 mt-0.5">
-                      {stats.completed} of {stats.total} done
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-accent via-accent/50 to-transparent border-accent-foreground/10 overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-accent-foreground/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <CardContent className="pt-6 pb-5">
-                  <div className="flex flex-col">
-                    <div className="p-2.5 bg-accent-foreground/10 rounded-xl w-fit mb-3">
-                      <Clock className="h-5 w-5 text-accent-foreground" />
-                    </div>
-                    <p className="text-3xl sm:text-4xl font-bold text-foreground">
-                      <AnimatedNumber value={stats.toDo} duration={800} />
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">Tasks Remaining</p>
-                    <p className="text-xs text-muted-foreground/70 mt-0.5">
-                      Keep going!
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Metric Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <MetricCard 
+                id="completed"
+                title="Tasks Completed" 
+                value={metrics.completed} 
+                change={metrics.completedChange}
+                icon={CheckCircle2}
+              />
+              <MetricCard 
+                id="hours"
+                title="Hours Logged" 
+                value={metrics.hours}
+                change={metrics.hoursChange}
+                icon={Clock}
+              />
+              <MetricCard 
+                id="streak"
+                title="Current Streak" 
+                value={streak}
+                suffix=" days"
+                icon={Flame}
+              />
+              <MetricCard 
+                id="rate"
+                title="Completion Rate" 
+                value={metrics.completionRate}
+                suffix="%"
+                icon={Target}
+              />
             </div>
 
-            {/* Productivity Streak */}
-            {streak > 0 && (
-              <Card className="bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-yellow-500/10 border-orange-500/20 overflow-hidden">
-                <CardContent className="py-5">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-gradient-to-br from-orange-500/20 to-amber-500/20 rounded-2xl">
-                      <Flame className="h-7 w-7 text-orange-500" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-2xl sm:text-3xl font-bold text-foreground">{streak}</p>
-                        <p className="text-sm font-medium text-muted-foreground">Day Streak</p>
-                      </div>
-                      <div className="mt-2.5">
-                        <Progress value={(streak / 14) * 100} className="h-2" />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1.5">
-                        {streak < 14 ? `${14 - streak} more days to hit 2 weeks!` : '🎉 Amazing streak!'}
-                      </p>
-                    </div>
+            {/* Insights */}
+            {insights.length > 0 && (
+              <div className="space-y-2">
+                {insights.map((insight, i) => (
+                  <div 
+                    key={i}
+                    className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg border border-border/30"
+                  >
+                    <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                    <p className="text-sm text-muted-foreground">{insight}</p>
                   </div>
-                </CardContent>
-              </Card>
+                ))}
+              </div>
             )}
 
-            {/* Overdue Tasks Alert */}
-            {overdueTasks.length > 0 && (
-              <Card className="border-destructive/30 bg-destructive/5 overflow-hidden">
-                <CardContent className="py-4">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2.5 bg-destructive/10 rounded-xl shrink-0">
-                      <AlertTriangle className="h-5 w-5 text-destructive" />
+            {/* Week View - Daily Activity + Comparison */}
+            {(period === 'last7days' || period === 'thisWeek') && (
+              <>
+                {/* Daily Activity Bars */}
+                <Card className="border-border/50">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-primary" />
+                      Daily Activity
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-5">
+                    <div className="flex items-end justify-between gap-2 h-32 mb-4">
+                      {chartData.map((item, i) => (
+                        <Tooltip key={i}>
+                          <TooltipTrigger asChild>
+                            <div className="flex-1 flex flex-col items-center gap-1.5 cursor-pointer group">
+                              <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                                {item.count > 0 ? item.count : ''}
+                              </span>
+                              <div 
+                                className="w-full bg-primary/80 rounded-md transition-all duration-300 group-hover:bg-primary" 
+                                style={{
+                                  height: `${maxChartValue > 0 ? (item.count / maxChartValue) * 80 : 0}px`,
+                                  minHeight: item.count > 0 ? '8px' : '3px',
+                                  opacity: item.count > 0 ? 1 : 0.2
+                                }} 
+                              />
+                              <span className="text-xs text-muted-foreground">{item.label}</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{item.count} tasks, ~{item.hours}h</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ))}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-destructive mb-2 text-sm sm:text-base">
-                        {overdueTasks.length} Overdue Task{overdueTasks.length > 1 ? 's' : ''}
-                      </h3>
-                      <ul className="space-y-1.5">
-                        {overdueTasks.map(task => (
-                          <li key={task.id} className="flex items-center gap-2 text-sm">
-                            <span className="truncate flex-1 text-muted-foreground">{task.title}</span>
-                            <span className="text-xs text-destructive font-medium whitespace-nowrap px-2 py-0.5 bg-destructive/10 rounded-full">
-                              {task.daysOverdue}d
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                      <Link to="/" className="text-xs text-primary hover:underline mt-3 inline-flex items-center gap-1 font-medium">
-                        View Tasks <span>→</span>
-                      </Link>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  </CardContent>
+                </Card>
 
-            {/* Weekly Priorities */}
-            {weeklyPriorities.length > 0 && (
-              <Card className="overflow-hidden">
-                <CardHeader className="pb-3 pt-5">
-                  <CardTitle className="text-base font-semibold flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-primary" />
-                      This Week's Focus
-                    </span>
-                    <Button asChild variant="ghost" size="sm" className="text-xs h-7 text-primary hover:text-primary">
-                      <Link to="/planning">View All</Link>
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pb-5">
-                  <ul className="space-y-2">
-                    {weeklyPriorities.map(task => (
-                      <li key={task.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
-                        <div className="w-4 h-4 rounded-full border-2 border-primary/40 shrink-0" />
-                        <span className="flex-1 text-sm truncate">{task.title}</span>
-                        {task.due_date && (
-                          <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
-                            {format(new Date(task.due_date), 'MMM d')}
-                          </span>
-                        )}
-                      </li>
+                {/* Last 4 Weeks Comparison */}
+                <Card className="border-border/50">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base font-semibold">Last 4 Weeks</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-5 space-y-4">
+                    {weeklyComparison.map((week, i) => (
+                      <HorizontalBar 
+                        key={i}
+                        label={week.label}
+                        value={week.completed}
+                        maxValue={maxWeeklyValue}
+                      />
                     ))}
-                  </ul>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </>
             )}
 
-            {/* Completion Trend */}
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-3 pt-5">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  Monthly Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-5">
-                <div className="flex items-end justify-between gap-3 h-28 mb-4">
-                  {weeklyTrend.weeks.map((week, i) => {
-                    const maxWeek = Math.max(...weeklyTrend.weeks.map(w => w.completed), 1);
-                    const height = (week.completed / maxWeek) * 70;
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                        <span className="text-xs font-medium text-foreground">
-                          {week.completed > 0 ? week.completed : '-'}
-                        </span>
-                        <div 
-                          className="w-full bg-gradient-to-t from-primary to-primary/70 rounded-lg transition-all duration-500" 
-                          style={{
-                            height: `${height}px`,
-                            minHeight: week.completed > 0 ? '12px' : '4px',
-                            opacity: week.completed > 0 ? 1 : 0.2
-                          }} 
-                        />
-                        <span className="text-xs text-muted-foreground">{week.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center justify-between text-sm border-t border-border/50 pt-4">
-                  <span className="text-muted-foreground">
-                    Average: <span className="font-semibold text-foreground">{weeklyTrend.avgCompleted}</span> / week
-                  </span>
-                  <span className={`flex items-center gap-1 font-medium ${weeklyTrend.trend >= 0 ? 'text-success' : 'text-destructive'}`}>
-                    {weeklyTrend.trend >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                    {weeklyTrend.trend >= 0 ? '+' : ''}{weeklyTrend.trend}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Month View */}
+            {period === 'thisMonth' && (
+              <>
+                {/* Weekly Breakdown */}
+                <Card className="border-border/50">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4 text-primary" />
+                      Weekly Breakdown
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-5 space-y-4">
+                    {chartData.map((item, i) => (
+                      <HorizontalBar 
+                        key={i}
+                        label={item.label}
+                        value={item.count}
+                        maxValue={maxChartValue}
+                      />
+                    ))}
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
+            {/* Year View */}
+            {period === 'thisYear' && (
+              <>
+                {/* Monthly Breakdown */}
+                <Card className="border-border/50">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-primary" />
+                      Monthly Overview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-5">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {chartData.map((item, i) => (
+                        <Tooltip key={i}>
+                          <TooltipTrigger asChild>
+                            <div className="text-center p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer">
+                              <p className="text-lg sm:text-xl font-bold text-foreground">{item.count}</p>
+                              <p className="text-xs text-muted-foreground">{item.label}</p>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{item.count} tasks, ~{item.hours}h</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Goal Achievement */}
+                <Card className="border-border/50">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <Target className="h-4 w-4 text-primary" />
+                      Goal Progress
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-5 space-y-4">
+                    <HorizontalBar 
+                      label="Tasks Completed"
+                      value={metrics.completed}
+                      maxValue={Math.max(metrics.completed, 100)}
+                    />
+                    <HorizontalBar 
+                      label="Completion Rate"
+                      value={metrics.completionRate}
+                      maxValue={100}
+                    />
+                  </CardContent>
+                </Card>
+              </>
+            )}
 
             {/* Activity Heatmap */}
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-3 pt-5">
+            <Card className="border-border/50">
+              <CardHeader className="pb-4">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <CalendarDays className="h-4 w-4 text-primary" />
                   Activity Heatmap
@@ -424,44 +626,6 @@ export default function Analytics() {
               </CardHeader>
               <CardContent className="pb-5">
                 <ActivityHeatmap tasks={tasks} subtasks={subtasks} months={4} />
-              </CardContent>
-            </Card>
-
-            {/* Activity Chart */}
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-3 pt-5">
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-primary" />
-                    Activity
-                  </CardTitle>
-                  <Tabs value={period} onValueChange={v => setPeriod(v as TimePeriod)}>
-                    <TabsList className="h-8 bg-muted/50">
-                      <TabsTrigger value="day" className="text-xs px-3 h-6 data-[state=active]:bg-background">Day</TabsTrigger>
-                      <TabsTrigger value="week" className="text-xs px-3 h-6 data-[state=active]:bg-background">Week</TabsTrigger>
-                      <TabsTrigger value="month" className="text-xs px-3 h-6 data-[state=active]:bg-background">Month</TabsTrigger>
-                      <TabsTrigger value="year" className="text-xs px-3 h-6 data-[state=active]:bg-background">Year</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-              </CardHeader>
-              <CardContent className="pb-5">
-                <div className="flex items-end justify-between gap-1.5 h-36">
-                  {chartData.map((item, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                      <span className="text-xs font-medium text-foreground">{item.count > 0 ? item.count : ''}</span>
-                      <div 
-                        className="w-full bg-gradient-to-t from-primary to-primary/60 rounded-md transition-all duration-300 hover:from-primary hover:to-primary/80" 
-                        style={{
-                          height: `${(item.count / maxCount) * 90}px`,
-                          minHeight: item.count > 0 ? '8px' : '3px',
-                          opacity: item.count > 0 ? 1 : 0.15
-                        }} 
-                      />
-                      <span className="text-[10px] sm:text-xs text-muted-foreground mt-1">{item.label}</span>
-                    </div>
-                  ))}
-                </div>
               </CardContent>
             </Card>
           </div>
