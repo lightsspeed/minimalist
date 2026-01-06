@@ -42,9 +42,14 @@ const periodLabels: Record<TimePeriod, string> = {
   today: 'Today',
   last7days: 'Last 7 days',
   thisWeek: 'This Week',
-  thisMonth: 'This Month',
-  thisYear: 'This Year'
+  thisMonth: 'Month',
+  thisYear: 'Year'
 };
+
+const monthNames = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export default function Analytics() {
   const { user, loading: authLoading } = useAuth();
@@ -53,6 +58,18 @@ export default function Analytics() {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [subtasksLoading, setSubtasksLoading] = useState(true);
   const [expandedMetric, setExpandedMetric] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // Available years (from 2020 to current year + 1)
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years: number[] = [];
+    for (let y = 2020; y <= currentYear + 1; y++) {
+      years.push(y);
+    }
+    return years;
+  }, []);
 
   useEffect(() => {
     const fetchSubtasks = async () => {
@@ -108,21 +125,31 @@ export default function Analytics() {
         prevEnd = endOfWeek(prevStart, { weekStartsOn: 1 });
         break;
       case 'thisMonth':
-        currentStart = startOfMonth(now);
-        currentEnd = now;
-        prevStart = startOfMonth(subMonths(now, 1));
+        // Use selected month and year
+        currentStart = new Date(selectedYear, selectedMonth, 1);
+        currentEnd = endOfMonth(currentStart);
+        // If selected month is current month, use now as end
+        if (selectedYear === now.getFullYear() && selectedMonth === now.getMonth()) {
+          currentEnd = now;
+        }
+        prevStart = startOfMonth(subMonths(currentStart, 1));
         prevEnd = endOfMonth(prevStart);
         break;
       case 'thisYear':
-        currentStart = startOfYear(now);
-        currentEnd = now;
-        prevStart = startOfYear(subYears(now, 1));
-        prevEnd = new Date(prevStart.getFullYear(), 11, 31, 23, 59, 59);
+        // Use selected year
+        currentStart = new Date(selectedYear, 0, 1);
+        currentEnd = new Date(selectedYear, 11, 31, 23, 59, 59);
+        // If selected year is current year, use now as end
+        if (selectedYear === now.getFullYear()) {
+          currentEnd = now;
+        }
+        prevStart = new Date(selectedYear - 1, 0, 1);
+        prevEnd = new Date(selectedYear - 1, 11, 31, 23, 59, 59);
         break;
     }
 
     return { currentStart, currentEnd, prevStart, prevEnd };
-  }, [period]);
+  }, [period, selectedMonth, selectedYear]);
 
   // Calculate streak
   const streak = useMemo(() => {
@@ -408,27 +435,76 @@ export default function Analytics() {
         ) : (
           <div className="space-y-6 animate-in fade-in duration-300">
             {/* Header with Period Selector */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <h1 className="text-xl sm:text-2xl font-bold text-foreground">Analytics</h1>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2 text-sm">
-                    {periodLabels[period]}
-                    <ChevronDown className="h-4 w-4 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  {(Object.keys(periodLabels) as TimePeriod[]).map(p => (
-                    <DropdownMenuItem 
-                      key={p} 
-                      onClick={() => setPeriod(p)}
-                      className={period === p ? 'bg-accent' : ''}
-                    >
-                      {periodLabels[p]}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-2">
+                {/* Month selector - shown when thisMonth is selected */}
+                {period === 'thisMonth' && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="gap-2 text-sm">
+                        {monthNames[selectedMonth]}
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-36 max-h-64 overflow-y-auto">
+                      {monthNames.map((month, idx) => (
+                        <DropdownMenuItem 
+                          key={month} 
+                          onClick={() => setSelectedMonth(idx)}
+                          className={selectedMonth === idx ? 'bg-accent' : ''}
+                        >
+                          {month}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+
+                {/* Year selector - shown when thisMonth or thisYear is selected */}
+                {(period === 'thisMonth' || period === 'thisYear') && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="gap-2 text-sm">
+                        {selectedYear}
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-28 max-h-64 overflow-y-auto">
+                      {availableYears.map(year => (
+                        <DropdownMenuItem 
+                          key={year} 
+                          onClick={() => setSelectedYear(year)}
+                          className={selectedYear === year ? 'bg-accent' : ''}
+                        >
+                          {year}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+
+                {/* Period selector */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="gap-2 text-sm">
+                      {periodLabels[period]}
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    {(Object.keys(periodLabels) as TimePeriod[]).map(p => (
+                      <DropdownMenuItem 
+                        key={p} 
+                        onClick={() => setPeriod(p)}
+                        className={period === p ? 'bg-accent' : ''}
+                      >
+                        {periodLabels[p]}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
 
             {/* Metric Cards */}
