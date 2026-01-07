@@ -18,6 +18,7 @@ export interface Task {
   created_at: string;
   updated_at: string;
   user_id: string;
+  repeat_daily: boolean;
 }
 
 export function useTasks() {
@@ -134,11 +135,17 @@ export function useTasks() {
     return { error: null };
   };
 
-  const updateTask = async (id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'tags' | 'is_completed' | 'position' | 'is_pinned' | 'is_template' | 'due_date'>>) => {
+  const updateTask = async (id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'tags' | 'is_completed' | 'position' | 'is_pinned' | 'is_template' | 'due_date' | 'repeat_daily'>>) => {
     // If marking as completed, set completed_at timestamp
     const finalUpdates: Record<string, unknown> = { ...updates };
     if (updates.is_completed === true) {
       finalUpdates.completed_at = new Date().toISOString();
+      
+      // Also mark all subtasks as completed
+      await supabase
+        .from('subtasks')
+        .update({ is_completed: true })
+        .eq('task_id', id);
     } else if (updates.is_completed === false) {
       finalUpdates.completed_at = null;
     }
@@ -158,6 +165,69 @@ export function useTasks() {
     }
 
     toast({ title: 'Task updated' });
+    await fetchTasks();
+    return { error: null };
+  };
+
+  const completeAllSubtasksAndTask = async (taskId: string) => {
+    // Mark all subtasks as completed
+    await supabase
+      .from('subtasks')
+      .update({ is_completed: true })
+      .eq('task_id', taskId);
+    
+    // Mark the main task as completed
+    await supabase
+      .from('tasks')
+      .update({ 
+        is_completed: true, 
+        completed_at: new Date().toISOString() 
+      })
+      .eq('id', taskId);
+    
+    toast({ title: 'Task completed' });
+    await fetchTasks();
+  };
+
+  const transferTaskToDate = async (taskId: string, newDate: Date) => {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ due_date: newDate.toISOString() })
+      .eq('id', taskId);
+
+    if (error) {
+      toast({
+        title: 'Error transferring task',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return { error };
+    }
+
+    toast({ title: 'Task transferred' });
+    await fetchTasks();
+    return { error: null };
+  };
+
+  const toggleRepeatDaily = async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return { error: new Error('Task not found') };
+
+    const { error } = await supabase
+      .from('tasks')
+      .update({ repeat_daily: !task.repeat_daily })
+      .eq('id', taskId);
+
+    if (error) {
+      toast({
+        title: 'Error updating task',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return { error };
+    }
+
+    toast({ title: task.repeat_daily ? 'Daily repeat disabled' : 'Daily repeat enabled' });
     await fetchTasks();
     return { error: null };
   };
@@ -298,6 +368,9 @@ export function useTasks() {
     togglePin,
     toggleTemplate,
     sendToNotes,
+    transferTaskToDate,
+    toggleRepeatDaily,
+    completeAllSubtasksAndTask,
     refetch: fetchTasks,
   };
 }

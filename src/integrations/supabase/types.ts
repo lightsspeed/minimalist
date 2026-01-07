@@ -286,6 +286,7 @@ export type Database = {
           is_pinned: boolean
           is_template: boolean
           position: number | null
+          repeat_daily: boolean
           tags: string[] | null
           title: string
           updated_at: string
@@ -301,6 +302,7 @@ export type Database = {
           is_pinned?: boolean
           is_template?: boolean
           position?: number | null
+          repeat_daily?: boolean
           tags?: string[] | null
           title: string
           updated_at?: string
@@ -316,6 +318,7 @@ export type Database = {
           is_pinned?: boolean
           is_template?: boolean
           position?: number | null
+          repeat_daily?: boolean
           tags?: string[] | null
           title?: string
           updated_at?: string
