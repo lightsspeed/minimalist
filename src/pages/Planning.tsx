@@ -181,6 +181,7 @@ export default function Planning() {
   const stats = useMemo(() => {
     const total = filteredTasks.length;
     const completed = filteredTasks.filter(t => t.is_completed).length;
+    const pending = filteredTasks.filter(t => !t.is_completed).length;
     const overdue = filteredTasks.filter(t => 
       !t.is_completed && t.due_date && isBefore(new Date(t.due_date), new Date())
     ).length;
@@ -193,8 +194,9 @@ export default function Planning() {
       totalSubtasks += taskSubtasks.length;
       completedSubtasks += taskSubtasks.filter(st => st.is_completed).length;
     });
+    const pendingSubtasks = totalSubtasks - completedSubtasks;
 
-    return { total, completed, overdue, totalSubtasks, completedSubtasks };
+    return { total, completed, pending, overdue, totalSubtasks, completedSubtasks, pendingSubtasks };
   }, [filteredTasks, subtasksMap]);
 
   const handleToggleComplete = async (task: Task) => {
@@ -556,10 +558,13 @@ export default function Planning() {
             <CardContent className="pt-3 pb-2 sm:pt-4 sm:pb-3 px-3 sm:px-4">
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
-                <span className="text-xs sm:text-sm text-muted-foreground">Subtasks</span>
+                <span className="text-xs sm:text-sm text-muted-foreground">Pending</span>
               </div>
               <p className="text-xl sm:text-2xl font-bold mt-0.5 sm:mt-1">
-                {stats.completedSubtasks}/{stats.totalSubtasks}
+                {stats.pending + stats.pendingSubtasks}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {stats.pending} tasks + {stats.pendingSubtasks} subtasks
               </p>
             </CardContent>
           </Card>
