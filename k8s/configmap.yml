@@ -1,0 +1,10 @@
+---
+# ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lightsspeed-config
+  namespace: lightsspeed
+data:
+  VITE_SUPABASE_PROJECT_ID: "qsuighkvqbvotufneksl"
+  VITE_SUPABASE_URL: "https://qsuighkvqbvotufneksl.supabase.co"

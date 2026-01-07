@@ -1,0 +1,17 @@
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: lightsspeed-mini-service
+  namespace: lightsspeed
+  labels:
+    app: lightsspeed-mini
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: lightsspeed-mini

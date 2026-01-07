@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lightsspeed-mini
+  namespace: lightsspeed
+  labels:
+    app: lightsspeed-mini
+    version: v1.0.1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: lightsspeed-mini
+  template:
+    metadata:
+      labels:
+        app: lightsspeed-mini
+        version: v1.0.1
+    spec:
+      containers:
+      - name: lightsspeed-mini
+        image: lightsspeed/minimalist:v1.0.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        env:
+        - name: VITE_SUPABASE_PROJECT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: lightsspeed-config
+              key: VITE_SUPABASE_PROJECT_ID
+        - name: VITE_SUPABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: lightsspeed-config
+              key: VITE_SUPABASE_URL
+        - name: VITE_SUPABASE_PUBLISHABLE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: lightsspeed-secret
+              key: VITE_SUPABASE_PUBLISHABLE_KEY
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
