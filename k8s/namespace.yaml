@@ -1,8 +1,8 @@
----
-# Namespace
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: lightsspeed
-  labels:
-    name: lightsspeed
+# ---
+# # Namespace
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: lightsspeed
+#   labels:
+#     name: lightsspeed
