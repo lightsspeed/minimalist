@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { 
   CheckCircle2, Flame, TrendingUp, TrendingDown, 
-  Target, ChevronDown, Lightbulb, BarChart3, CalendarDays
+  Target, ChevronDown, Lightbulb, BarChart3, CalendarDays, Clock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -228,18 +228,64 @@ export default function Analytics() {
       ? Math.round(((current.completed - previous.completed) / previous.completed) * 100)
       : current.completed > 0 ? 100 : 0;
 
-    // Total tasks for completion rate
-    const allTasks = tasks.filter(t => !t.is_template);
-    const completedTasks = allTasks.filter(t => t.is_completed);
-    const completionRate = allTasks.length > 0 
-      ? Math.round((completedTasks.length / allTasks.length) * 100)
+    // Completion rate for the current period (tasks created within the period)
+    const periodTasks = tasks.filter(t => {
+      if (t.is_template) return false;
+      const createdDate = new Date(t.created_at);
+      return createdDate >= currentStart && createdDate <= currentEnd;
+    });
+    const periodSubtasksAll = subtasks.filter(s => {
+      const createdDate = new Date(s.created_at);
+      return createdDate >= currentStart && createdDate <= currentEnd;
+    });
+    
+    const periodCompletedTasks = periodTasks.filter(t => t.is_completed).length;
+    const periodCompletedSubtasks = periodSubtasksAll.filter(s => s.is_completed).length;
+    const totalPeriodItems = periodTasks.length + periodSubtasksAll.length;
+    const totalPeriodCompleted = periodCompletedTasks + periodCompletedSubtasks;
+    
+    const completionRate = totalPeriodItems > 0 
+      ? Math.round((totalPeriodCompleted / totalPeriodItems) * 100)
       : 0;
+
+    // Previous period completion rate for comparison
+    const prevPeriodTasks = tasks.filter(t => {
+      if (t.is_template) return false;
+      const createdDate = new Date(t.created_at);
+      return createdDate >= prevStart && createdDate <= prevEnd;
+    });
+    const prevPeriodSubtasksAll = subtasks.filter(s => {
+      const createdDate = new Date(s.created_at);
+      return createdDate >= prevStart && createdDate <= prevEnd;
+    });
+    
+    const prevCompletedTasks = prevPeriodTasks.filter(t => t.is_completed).length;
+    const prevCompletedSubtasks = prevPeriodSubtasksAll.filter(s => s.is_completed).length;
+    const totalPrevItems = prevPeriodTasks.length + prevPeriodSubtasksAll.length;
+    const totalPrevCompleted = prevCompletedTasks + prevCompletedSubtasks;
+    
+    const prevCompletionRate = totalPrevItems > 0 
+      ? Math.round((totalPrevCompleted / totalPrevItems) * 100)
+      : 0;
+
+    const completionRateChange = prevCompletionRate > 0 
+      ? completionRate - prevCompletionRate
+      : completionRate > 0 ? completionRate : 0;
+
+    // Pending tasks (not completed main tasks + subtasks)
+    const pendingMainTasks = tasks.filter(t => !t.is_template && !t.is_completed).length;
+    const pendingSubtasks = subtasks.filter(s => !s.is_completed).length;
+    const totalPending = pendingMainTasks + pendingSubtasks;
 
     return {
       completed: current.completed,
       completedChange,
       streak,
-      completionRate
+      completionRate,
+      completionRateChange,
+      pendingTasks: totalPending,
+      pendingMainTasks,
+      pendingSubtasks
     };
   }, [dateRanges, tasks, subtasks, streak]);
 
@@ -538,13 +584,19 @@ export default function Analytics() {
             </div>
 
             {/* Metric Cards */}
-            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               <MetricCard 
                 id="completed"
                 title="Tasks Completed" 
                 value={metrics.completed} 
                 change={metrics.completedChange}
                 icon={CheckCircle2}
+              />
+              <MetricCard 
+                id="pending"
+                title="Pending Tasks" 
+                value={metrics.pendingTasks}
+                icon={Clock}
               />
               <MetricCard 
                 id="streak"
@@ -558,6 +610,7 @@ export default function Analytics() {
                 title="Completion Rate" 
                 value={metrics.completionRate}
                 suffix="%"
+                change={metrics.completionRateChange}
                 icon={Target}
               />
             </div>
