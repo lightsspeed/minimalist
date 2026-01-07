@@ -30,4 +30,6 @@ deploy.sh
 .env.development.local
 .env.test.local
 .env.production.local
+deploy_local.sh
+
 
