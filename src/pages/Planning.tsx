@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Calendar, CalendarDays, CalendarRange, Target, Plus, ChevronLeft, ChevronRight, Check, Clock, X, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarRange, Target, Plus, ChevronLeft, ChevronRight, Check, Clock, X, Pencil, Trash2, MoreHorizontal, Repeat, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,7 +45,7 @@ interface Subtask {
 
 export default function Planning() {
   const { user, loading: authLoading } = useAuth();
-  const { tasks, loading: tasksLoading, updateTask, addTask, deleteTask } = useTasks();
+  const { tasks, loading: tasksLoading, updateTask, addTask, deleteTask, transferTaskToDate, toggleRepeatDaily } = useTasks();
   const [view, setView] = useState<PlanView>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [subtasksMap, setSubtasksMap] = useState<Record<string, Subtask[]>>({});
@@ -59,10 +59,12 @@ export default function Planning() {
   const [isAddingTask, setIsAddingTask] = useState(false);
   const quickAddInputRef = useRef<HTMLInputElement>(null);
   
-  // Edit/Delete state
+  // Edit/Delete/Transfer state
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
+  const [transferTaskId, setTransferTaskId] = useState<string | null>(null);
+  const [transferDate, setTransferDate] = useState<Date | undefined>(undefined);
 
   // Get current time as default
   const getCurrentTimeString = () => {
@@ -349,12 +351,17 @@ export default function Planning() {
           className="mt-0.5 flex-shrink-0"
         />
         <div className="flex-1 min-w-0">
-          <p className={cn(
-            'text-sm sm:text-base font-medium break-words',
-            task.is_completed && 'line-through text-muted-foreground'
-          )}>
-            {task.title}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className={cn(
+              'text-sm sm:text-base font-medium break-words',
+              task.is_completed && 'line-through text-muted-foreground'
+            )}>
+              {task.title}
+            </p>
+            {task.repeat_daily && (
+              <Repeat className="h-3 w-3 text-primary flex-shrink-0" />
+            )}
+          </div>
           {!compact && task.description && (
             <p className="text-xs sm:text-sm text-muted-foreground truncate">{task.description}</p>
           )}
@@ -379,10 +386,21 @@ export default function Planning() {
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => handleEditTask(task)}>
                 <Pencil className="h-4 w-4 mr-2" />
                 Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                setTransferTaskId(task.id);
+                setTransferDate(task.due_date ? addDays(new Date(task.due_date), 1) : addDays(new Date(), 1));
+              }}>
+                <ArrowRight className="h-4 w-4 mr-2" />
+                Transfer to...
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toggleRepeatDaily(task.id)}>
+                <Repeat className="h-4 w-4 mr-2" />
+                {task.repeat_daily ? 'Disable repeat' : 'Repeat daily'}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
@@ -720,6 +738,53 @@ export default function Planning() {
             <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground w-full sm:w-auto">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Transfer Task Dialog */}
+      <AlertDialog open={!!transferTaskId} onOpenChange={(open) => !open && setTransferTaskId(null)}>
+        <AlertDialogContent className="max-w-[90vw] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Transfer Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Select a new date for this task.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  {transferDate ? format(transferDate, 'PPP') : 'Pick a date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={transferDate}
+                  onSelect={setTransferDate}
+                  disabled={(date) => isBefore(startOfDay(date), startOfDay(new Date()))}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={async () => {
+                if (transferTaskId && transferDate) {
+                  await transferTaskToDate(transferTaskId, transferDate);
+                  setTransferTaskId(null);
+                }
+              }} 
+              disabled={!transferDate}
+              className="w-full sm:w-auto"
+            >
+              Transfer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
