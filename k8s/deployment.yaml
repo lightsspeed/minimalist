@@ -5,7 +5,7 @@ metadata:
   namespace: lightsspeed
   labels:
     app: lightsspeed-mini
-    version: v1.0.1
+    version: v1.0.2
 spec:
   replicas: 3
   selector:
@@ -15,11 +15,11 @@ spec:
     metadata:
       labels:
         app: lightsspeed-mini
-        version: v1.0.1
+        version: v1.0.2
     spec:
       containers:
       - name: lightsspeed-mini
-        image: lightsspeed/minimalist:v1.0.1
+        image: lightsspeed/minimalist:v1.0.2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
