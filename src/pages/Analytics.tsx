@@ -354,10 +354,10 @@ export default function Analytics() {
     }
   }, [period, dateRanges, tasks, subtasks]);
 
-  // Last 4 weeks comparison (for week view)
+  // Last 4 weeks comparison (for week view) - with actual date ranges
   const weeklyComparison = useMemo(() => {
     const now = new Date();
-    const weeks: { label: string; completed: number }[] = [];
+    const weeks: { label: string; dateRange: string; completed: number; isCurrent: boolean }[] = [];
     
     for (let i = 3; i >= 0; i--) {
       const weekStart = startOfWeek(subDays(now, i * 7), { weekStartsOn: 1 });
@@ -367,14 +367,26 @@ export default function Analytics() {
         const completedDate = new Date(t.completed_at);
         return completedDate >= weekStart && completedDate <= weekEnd;
       }).length;
+      
+      // Format as "Jan 1 - Jan 7"
+      const dateRange = `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`;
+      
       weeks.push({ 
-        label: i === 0 ? 'This week' : i === 1 ? 'Last week' : `${i} weeks ago`,
-        completed
+        label: i === 0 ? 'This Week' : `Week ${4 - i}`,
+        dateRange,
+        completed,
+        isCurrent: i === 0
       });
     }
     
     return weeks;
   }, [tasks]);
+
+  // Calculate weekly average
+  const weeklyAverage = useMemo(() => {
+    const total = weeklyComparison.reduce((sum, w) => sum + w.completed, 0);
+    return Math.round(total / weeklyComparison.length);
+  }, [weeklyComparison]);
 
   // Insights based on data
   const insights = useMemo(() => {
@@ -463,33 +475,54 @@ export default function Analytics() {
     label, 
     value, 
     maxValue, 
-    showValue = true 
+    showValue = true,
+    subtitle,
+    highlight = false,
+    average
   }: { 
     label: string; 
     value: number; 
     maxValue: number; 
     showValue?: boolean;
-  }) => (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className="group cursor-pointer">
-          <div className="flex items-center justify-between text-sm mb-1.5">
-            <span className="text-muted-foreground">{label}</span>
-            {showValue && <span className="font-medium text-foreground">{value}</span>}
+    subtitle?: string;
+    highlight?: boolean;
+    average?: number;
+  }) => {
+    const isAboveAverage = average !== undefined && value >= average;
+    const isBelowAverage = average !== undefined && value < average && value > 0;
+    
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className={`group cursor-pointer p-3 rounded-lg transition-colors ${highlight ? 'bg-primary/5 border border-primary/20' : 'hover:bg-muted/30'}`}>
+            <div className="flex items-center justify-between text-sm mb-2">
+              <div>
+                <span className={`font-medium ${highlight ? 'text-primary' : 'text-foreground'}`}>{label}</span>
+                {subtitle && <span className="text-xs text-muted-foreground ml-2">{subtitle}</span>}
+              </div>
+              {showValue && (
+                <div className="flex items-center gap-2">
+                  <span className={`font-bold text-lg ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</span>
+                  {isAboveAverage && <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />}
+                  {isBelowAverage && <TrendingDown className="h-3.5 w-3.5 text-amber-500" />}
+                </div>
+              )}
+            </div>
+            <div className="h-3 bg-muted rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${highlight ? 'bg-primary' : 'bg-primary/70'} group-hover:bg-primary`}
+                style={{ width: `${maxValue > 0 ? (value / maxValue) * 100 : 0}%` }}
+              />
+            </div>
           </div>
-          <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary rounded-full transition-all duration-500 group-hover:bg-primary/80"
-              style={{ width: `${maxValue > 0 ? (value / maxValue) * 100 : 0}%` }}
-            />
-          </div>
-        </div>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>{value} tasks completed</p>
-      </TooltipContent>
-    </Tooltip>
-  );
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{value} tasks completed</p>
+          {average !== undefined && <p className="text-xs text-muted-foreground">Average: {average}/week</p>}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background transition-all duration-300">
@@ -670,18 +703,29 @@ export default function Analytics() {
                   </CardContent>
                 </Card>
 
-                {/* Last 4 Weeks Comparison */}
+                {/* Weekly Progress */}
                 <Card className="border-border/50">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="text-base font-semibold">Last 4 Weeks</CardTitle>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base font-semibold flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-primary" />
+                        Weekly Progress
+                      </CardTitle>
+                      <div className="text-xs text-muted-foreground">
+                        Avg: <span className="font-medium text-foreground">{weeklyAverage}</span>/week
+                      </div>
+                    </div>
                   </CardHeader>
-                  <CardContent className="pb-5 space-y-4">
+                  <CardContent className="pb-5 space-y-2">
                     {weeklyComparison.map((week, i) => (
                       <HorizontalBar 
                         key={i}
                         label={week.label}
+                        subtitle={week.dateRange}
                         value={week.completed}
                         maxValue={maxWeeklyValue}
+                        highlight={week.isCurrent}
+                        average={weeklyAverage}
                       />
                     ))}
                   </CardContent>
