@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Calendar, CalendarDays, CalendarRange, Target, Plus, ChevronLeft, ChevronRight, Check, Clock, X, Pencil, Trash2, MoreHorizontal, Repeat, ArrowRight } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarRange, Target, Plus, ChevronLeft, ChevronRight, Check, Clock, X, Pencil, Trash2, MoreHorizontal, Repeat, ArrowRight, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -289,12 +290,17 @@ export default function Planning() {
     return isBefore(startOfDay(date), startOfDay(new Date()));
   };
 
-  // Group tasks by date for week/month view
-  const groupedTasks = useMemo(() => {
-    if (view === 'day') return null;
+  // Separate pending and completed tasks
+  const { pendingTasks, completedTasks } = useMemo(() => {
+    const pending = filteredTasks.filter(t => !t.is_completed);
+    const completed = filteredTasks.filter(t => t.is_completed);
+    return { pendingTasks: pending, completedTasks: completed };
+  }, [filteredTasks]);
 
+  // Group tasks by date for week/month view
+  const groupTasksByDate = (tasks: Task[]) => {
     const groups: Record<string, Task[]> = {};
-    filteredTasks.forEach(task => {
+    tasks.forEach(task => {
       if (task.due_date) {
         const dateKey = format(new Date(task.due_date), 'yyyy-MM-dd');
         if (!groups[dateKey]) groups[dateKey] = [];
@@ -305,18 +311,20 @@ export default function Planning() {
     // Sort dates
     return Object.entries(groups)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, tasks]) => ({
+      .map(([date, dateTasks]) => ({
         date,
         label: format(new Date(date), view === 'week' ? 'EEEE, MMM d' : 'MMM d'),
-        tasks: [...tasks].sort((a, b) => {
-          // First sort by completion status (pending first, completed last)
-          const completionDiff = (a.is_completed ? 1 : 0) - (b.is_completed ? 1 : 0);
-          if (completionDiff !== 0) return completionDiff;
-          // Then sort by due date time
-          return new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime();
-        })
+        tasks: [...dateTasks].sort((a, b) => 
+          new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime()
+        )
       }));
-  }, [filteredTasks, view]);
+  };
+
+  const pendingGrouped = useMemo(() => view !== 'day' ? groupTasksByDate(pendingTasks) : null, [pendingTasks, view]);
+  const completedGrouped = useMemo(() => view !== 'day' ? groupTasksByDate(completedTasks) : null, [completedTasks, view]);
+
+  // State for collapsible completed section
+  const [completedOpen, setCompletedOpen] = useState(false);
 
   if (authLoading) {
     return (
@@ -605,58 +613,87 @@ export default function Planning() {
         ) : (
           <div className="space-y-3 sm:space-y-4">
             {view === 'day' ? (
-              // Day View - Simple list
-              <Card>
-                <CardHeader className="pb-2 px-3 sm:px-6">
-                  <CardTitle className="text-sm sm:text-base font-medium flex items-center justify-between">
-                    <span>Tasks for {format(currentDate, 'MMM d')}</span>
-                    <Button variant="outline" size="sm" onClick={openQuickAdd} className="h-8 text-xs sm:text-sm">
-                      <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
-                      Add
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-3 sm:px-6">
-                  {filteredTasks.length === 0 && !showQuickAdd ? (
-                    <div className="text-center py-6 sm:py-8 text-muted-foreground">
-                      <Calendar className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2 sm:mb-3 opacity-20" />
-                      <p className="text-sm sm:text-base">No tasks scheduled for this day</p>
-                      <Button variant="link" className="mt-1 sm:mt-2 text-sm" onClick={openQuickAdd}>
-                        Add a task
+              // Day View - Simple list with pending on top, completed collapsible at bottom
+              <>
+                <Card>
+                  <CardHeader className="pb-2 px-3 sm:px-6">
+                    <CardTitle className="text-sm sm:text-base font-medium flex items-center justify-between">
+                      <span>Tasks for {format(currentDate, 'MMM d')}</span>
+                      <Button variant="outline" size="sm" onClick={openQuickAdd} className="h-8 text-xs sm:text-sm">
+                        <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                        Add
                       </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 sm:space-y-3">
-                      {/* Quick Add Form */}
-                      {showQuickAdd && renderQuickAddForm()}
-                      
-                      {/* Task List */}
-                      {filteredTasks.length > 0 && (
-                        <ul className="space-y-1.5 sm:space-y-2">
-                          {filteredTasks
-                            .sort((a, b) => (a.is_completed ? 1 : 0) - (b.is_completed ? 1 : 0))
-                            .map(task => <TaskItem key={task.id} task={task} />)}
-                        </ul>
-                      )}
-                      
-                      {/* Add another task button when list is not empty */}
-                      {filteredTasks.length > 0 && !showQuickAdd && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="w-full text-muted-foreground text-sm"
-                          onClick={openQuickAdd}
-                        >
-                          <Plus className="h-3.5 w-3.5 mr-1" />
-                          Add another task
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-3 sm:px-6">
+                    {filteredTasks.length === 0 && !showQuickAdd ? (
+                      <div className="text-center py-6 sm:py-8 text-muted-foreground">
+                        <Calendar className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2 sm:mb-3 opacity-20" />
+                        <p className="text-sm sm:text-base">No tasks scheduled for this day</p>
+                        <Button variant="link" className="mt-1 sm:mt-2 text-sm" onClick={openQuickAdd}>
+                          Add a task
                         </Button>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 sm:space-y-3">
+                        {/* Quick Add Form */}
+                        {showQuickAdd && renderQuickAddForm()}
+                        
+                        {/* Pending Tasks */}
+                        {pendingTasks.length > 0 && (
+                          <ul className="space-y-1.5 sm:space-y-2">
+                            {pendingTasks.map(task => <TaskItem key={task.id} task={task} />)}
+                          </ul>
+                        )}
+                        
+                        {/* Add another task button when list is not empty */}
+                        {filteredTasks.length > 0 && !showQuickAdd && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="w-full text-muted-foreground text-sm"
+                            onClick={openQuickAdd}
+                          >
+                            <Plus className="h-3.5 w-3.5 mr-1" />
+                            Add another task
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Completed Tasks - Collapsible */}
+                {completedTasks.length > 0 && (
+                  <Collapsible open={completedOpen} onOpenChange={setCompletedOpen}>
+                    <Card>
+                      <CollapsibleTrigger asChild>
+                        <CardHeader className="pb-2 px-3 sm:px-6 cursor-pointer hover:bg-muted/50 transition-colors">
+                          <CardTitle className="text-sm sm:text-base font-medium flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Check className="h-4 w-4 text-success" />
+                              <span>Completed ({completedTasks.length})</span>
+                            </div>
+                            <ChevronDown className={cn(
+                              "h-4 w-4 text-muted-foreground transition-transform",
+                              completedOpen && "rotate-180"
+                            )} />
+                          </CardTitle>
+                        </CardHeader>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <CardContent className="px-3 sm:px-6 pt-0">
+                          <ul className="space-y-1.5 sm:space-y-2">
+                            {completedTasks.map(task => <TaskItem key={task.id} task={task} />)}
+                          </ul>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+                )}
+              </>
             ) : (
-              // Week/Month View - Grouped by date
+              // Week/Month View - Grouped by date with pending on top, completed collapsible at bottom
               <>
                 {/* Quick Add Form for Week/Month View */}
                 {showQuickAdd && (
@@ -679,8 +716,9 @@ export default function Planning() {
                   </Button>
                 )}
 
-                {groupedTasks && groupedTasks.length > 0 ? (
-                  groupedTasks.map(group => (
+                {/* Pending Tasks Grouped by Date */}
+                {pendingGrouped && pendingGrouped.length > 0 ? (
+                  pendingGrouped.map(group => (
                     <Card key={group.date}>
                       <CardHeader className="pb-2 px-3 sm:px-6">
                         <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
@@ -694,7 +732,7 @@ export default function Planning() {
                       </CardContent>
                     </Card>
                   ))
-                ) : !showQuickAdd && (
+                ) : !showQuickAdd && completedGrouped?.length === 0 && (
                   <Card>
                     <CardContent className="py-8 sm:py-12">
                       <div className="text-center text-muted-foreground">
@@ -706,6 +744,40 @@ export default function Planning() {
                       </div>
                     </CardContent>
                   </Card>
+                )}
+
+                {/* Completed Tasks - Collapsible grouped by date */}
+                {completedGrouped && completedGrouped.length > 0 && (
+                  <Collapsible open={completedOpen} onOpenChange={setCompletedOpen}>
+                    <Card>
+                      <CollapsibleTrigger asChild>
+                        <CardHeader className="pb-2 px-3 sm:px-6 cursor-pointer hover:bg-muted/50 transition-colors">
+                          <CardTitle className="text-sm sm:text-base font-medium flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Check className="h-4 w-4 text-success" />
+                              <span>Completed ({completedTasks.length})</span>
+                            </div>
+                            <ChevronDown className={cn(
+                              "h-4 w-4 text-muted-foreground transition-transform",
+                              completedOpen && "rotate-180"
+                            )} />
+                          </CardTitle>
+                        </CardHeader>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <CardContent className="px-3 sm:px-6 pt-0 space-y-4">
+                          {completedGrouped.map(group => (
+                            <div key={group.date}>
+                              <p className="text-xs text-muted-foreground mb-2">{group.label}</p>
+                              <ul className="space-y-1.5 sm:space-y-2">
+                                {group.tasks.map(task => <TaskItem key={task.id} task={task} compact />)}
+                              </ul>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
                 )}
               </>
             )}
