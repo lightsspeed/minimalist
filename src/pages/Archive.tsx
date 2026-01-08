@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Plus, Archive, Copy, CheckCircle2, Layers } from 'lucide-react';
+import { Plus, Archive, Copy, CheckCircle2, Layers, ChevronDown } from 'lucide-react';
+import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +12,7 @@ import { ShareModal } from '@/components/ShareModal';
 import { SearchBar } from '@/components/SearchBar';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks, Task } from '@/hooks/useTasks';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +23,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+const formatDateLabel = (dateStr: string): string => {
+  const date = parseISO(dateStr);
+  if (isToday(date)) return 'Today';
+  if (isYesterday(date)) return 'Yesterday';
+  return format(date, 'EEEE, MMM d, yyyy');
+};
 
 export default function ArchivePage() {
   const { user, loading: authLoading } = useAuth();
@@ -33,9 +42,10 @@ export default function ArchivePage() {
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'completed' | 'templates'>('completed');
+  const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
-  // Filter completed tasks
-  const completedTasks = useMemo(() => {
+  // Filter and group completed tasks by date
+  const groupedCompletedTasks = useMemo(() => {
     let result = tasks.filter(t => t.is_completed && !t.is_template);
     
     if (searchQuery) {
@@ -47,10 +57,30 @@ export default function ArchivePage() {
       );
     }
     
-    return result.sort((a, b) => 
-      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-    );
+    // Sort by completed_at or updated_at descending
+    result.sort((a, b) => {
+      const dateA = a.completed_at || a.updated_at;
+      const dateB = b.completed_at || b.updated_at;
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
+    });
+
+    // Group by date
+    const grouped: Record<string, Task[]> = {};
+    result.forEach((task) => {
+      const dateKey = format(parseISO(task.completed_at || task.updated_at), 'yyyy-MM-dd');
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(task);
+    });
+
+    return grouped;
   }, [tasks, searchQuery]);
+
+  const completedTasksCount = useMemo(() => 
+    Object.values(groupedCompletedTasks).reduce((sum, arr) => sum + arr.length, 0),
+    [groupedCompletedTasks]
+  );
 
   // Filter templates
   const templates = useMemo(() => {
@@ -67,6 +97,18 @@ export default function ArchivePage() {
     
     return result;
   }, [tasks, searchQuery]);
+
+  const toggleDateCollapse = (dateKey: string) => {
+    setCollapsedDates((prev) => {
+      const next = new Set(prev);
+      if (next.has(dateKey)) {
+        next.delete(dateKey);
+      } else {
+        next.add(dateKey);
+      }
+      return next;
+    });
+  };
 
   if (authLoading) {
     return (
@@ -152,7 +194,7 @@ export default function ArchivePage() {
           <TabsList className="mb-4">
             <TabsTrigger value="completed" className="gap-2">
               <CheckCircle2 className="h-4 w-4" />
-              Completed ({completedTasks.length})
+              Completed ({completedTasksCount})
             </TabsTrigger>
             <TabsTrigger value="templates" className="gap-2">
               <Layers className="h-4 w-4" />
@@ -163,7 +205,7 @@ export default function ArchivePage() {
           <TabsContent value="completed">
             {tasksLoading ? (
               <div className="text-center py-12 text-muted-foreground">Loading...</div>
-            ) : completedTasks.length === 0 ? (
+            ) : completedTasksCount === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
@@ -176,19 +218,46 @@ export default function ArchivePage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-3">
-                {completedTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onEdit={handleEditClick}
-                    onDelete={handleDeleteClick}
-                    onShare={handleShareClick}
-                    onToggleComplete={handleToggleComplete}
-                    onTogglePin={handleTogglePin}
-                    onConvertToNote={handleConvertToNote}
-                    onSaveAsTemplate={handleSaveAsTemplate}
-                  />
+              <div className="space-y-4">
+                {Object.entries(groupedCompletedTasks).map(([dateKey, tasksForDate]) => (
+                  <Collapsible
+                    key={dateKey}
+                    open={!collapsedDates.has(dateKey)}
+                    onOpenChange={() => toggleDateCollapse(dateKey)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <button className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm text-foreground">
+                            {formatDateLabel(dateKey)}
+                          </span>
+                          <span className="text-xs text-muted-foreground bg-background px-2 py-0.5 rounded-full">
+                            {tasksForDate.length} {tasksForDate.length === 1 ? 'task' : 'tasks'}
+                          </span>
+                        </div>
+                        <ChevronDown 
+                          className={`h-4 w-4 text-muted-foreground transition-transform ${
+                            !collapsedDates.has(dateKey) ? 'rotate-180' : ''
+                          }`} 
+                        />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-3">
+                      {tasksForDate.map((task) => (
+                        <TaskCard
+                          key={task.id}
+                          task={task}
+                          onEdit={handleEditClick}
+                          onDelete={handleDeleteClick}
+                          onShare={handleShareClick}
+                          onToggleComplete={handleToggleComplete}
+                          onTogglePin={handleTogglePin}
+                          onConvertToNote={handleConvertToNote}
+                          onSaveAsTemplate={handleSaveAsTemplate}
+                        />
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
                 ))}
               </div>
             )}
