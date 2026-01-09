@@ -83,38 +83,8 @@ export default function Planning() {
     return undefined;
   };
 
-  // Fetch subtasks for all tasks
-  useEffect(() => {
-    const fetchSubtasks = async () => {
-      if (!user || tasks.length === 0) {
-        setSubtasksMap({});
-        setSubtasksLoading(false);
-        return;
-      }
+  // Subtasks are loaded for the currently visible tasks (see effect below)
 
-      const taskIds = tasks.map(t => t.id);
-      const { data, error } = await supabase
-        .from('subtasks')
-        .select('id, task_id, title, is_completed')
-        .in('task_id', taskIds);
-
-      if (error) {
-        console.error('Error fetching subtasks:', error);
-      } else {
-        const map: Record<string, Subtask[]> = {};
-        (data || []).forEach(st => {
-          if (!map[st.task_id]) map[st.task_id] = [];
-          map[st.task_id].push(st);
-        });
-        setSubtasksMap(map);
-      }
-      setSubtasksLoading(false);
-    };
-
-    if (!tasksLoading) {
-      fetchSubtasks();
-    }
-  }, [user, tasks, tasksLoading]);
 
   const navigateDate = (direction: 'prev' | 'next') => {
     switch (view) {
@@ -181,8 +151,50 @@ export default function Planning() {
     });
   }, [tasks, view, currentDate, dateRange]);
 
+  // Fetch subtasks only for currently visible tasks (keeps counts accurate and avoids huge IN queries)
+  useEffect(() => {
+    const fetchVisibleSubtasks = async () => {
+      if (!user) {
+        setSubtasksMap({});
+        setSubtasksLoading(false);
+        return;
+      }
+
+      if (tasksLoading) return;
+
+      const visibleTaskIds = filteredTasks.map(t => t.id);
+      if (visibleTaskIds.length === 0) {
+        setSubtasksMap({});
+        setSubtasksLoading(false);
+        return;
+      }
+
+      setSubtasksLoading(true);
+      const { data, error } = await supabase
+        .from('subtasks')
+        .select('id, task_id, title, is_completed')
+        .in('task_id', visibleTaskIds);
+
+      if (error) {
+        console.error('Error fetching subtasks:', error);
+        setSubtasksMap({});
+      } else {
+        const map: Record<string, Subtask[]> = {};
+        (data || []).forEach(st => {
+          (map[st.task_id] ||= []).push(st as Subtask);
+        });
+        setSubtasksMap(map);
+      }
+
+      setSubtasksLoading(false);
+    };
+
+    fetchVisibleSubtasks();
+  }, [user, tasksLoading, filteredTasks]);
+
   const stats = useMemo(() => {
     const total = filteredTasks.length;
+
     const completed = filteredTasks.filter(t => t.is_completed).length;
     const pending = filteredTasks.filter(t => !t.is_completed).length;
     const overdue = filteredTasks.filter(t => 
@@ -577,7 +589,12 @@ export default function Planning() {
                 <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-success" />
                 <span className="text-xs sm:text-sm text-muted-foreground">Done</span>
               </div>
-              <p className="text-xl sm:text-2xl font-bold mt-0.5 sm:mt-1">{stats.completed}</p>
+              <p className="text-xl sm:text-2xl font-bold mt-0.5 sm:mt-1">
+                {stats.completed + stats.completedSubtasks}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {stats.completed} tasks + {stats.completedSubtasks} subtasks
+              </p>
             </CardContent>
           </Card>
           <Card>
