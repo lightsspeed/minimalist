@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Plus, Archive, Copy, CheckCircle2, Layers, ChevronDown } from 'lucide-react';
+import { Plus, Archive, Copy, CheckCircle2, Layers, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,7 +42,15 @@ export default function ArchivePage() {
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'completed' | 'templates'>('completed');
-  const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
+  const [collapsedDates, setCollapsedDates] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('archive-collapsed-dates');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+
+  // Persist collapsed state to localStorage
+  useEffect(() => {
+    localStorage.setItem('archive-collapsed-dates', JSON.stringify([...collapsedDates]));
+  }, [collapsedDates]);
 
   // Filter and group completed tasks by date
   const groupedCompletedTasks = useMemo(() => {
@@ -108,6 +116,17 @@ export default function ArchivePage() {
       }
       return next;
     });
+  };
+
+  const dateKeys = Object.keys(groupedCompletedTasks);
+  const allCollapsed = dateKeys.length > 0 && dateKeys.every(key => collapsedDates.has(key));
+
+  const toggleAll = () => {
+    if (allCollapsed) {
+      setCollapsedDates(new Set());
+    } else {
+      setCollapsedDates(new Set(dateKeys));
+    }
   };
 
   if (authLoading) {
@@ -219,6 +238,17 @@ export default function ArchivePage() {
               </Card>
             ) : (
               <div className="space-y-4">
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleAll}
+                    className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <ChevronsUpDown className="h-4 w-4" />
+                    {allCollapsed ? 'Expand All' : 'Collapse All'}
+                  </Button>
+                </div>
                 {Object.entries(groupedCompletedTasks).map(([dateKey, tasksForDate]) => (
                   <Collapsible
                     key={dateKey}
