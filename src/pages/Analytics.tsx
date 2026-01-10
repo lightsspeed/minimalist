@@ -276,9 +276,12 @@ export default function Analytics() {
       ? completionRate - prevCompletionRate
       : completionRate > 0 ? completionRate : 0;
 
-    // Pending tasks (not completed main tasks + subtasks)
-    const pendingMainTasks = tasks.filter(t => !t.is_template && !t.is_completed).length;
-    const pendingSubtasks = subtasks.filter(s => !s.is_completed).length;
+    // Pending tasks (only from Dashboard: non-template, non-completed tasks + their subtasks)
+    const pendingTasks = tasks.filter(t => !t.is_template && !t.is_completed);
+    const pendingMainTasks = pendingTasks.length;
+    const pendingTaskIds = new Set(pendingTasks.map(t => t.id));
+    // Only count subtasks belonging to pending (non-completed) main tasks
+    const pendingSubtasks = subtasks.filter(s => !s.is_completed && pendingTaskIds.has(s.task_id)).length;
     const totalPending = pendingMainTasks + pendingSubtasks;
 
     return {
