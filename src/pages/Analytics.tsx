@@ -101,6 +101,9 @@ export default function Analytics() {
     };
   }, [tasks]);
 
+  // Only fetch subtasks for non-template tasks
+  const nonTemplateTasks = useMemo(() => tasks.filter(t => !t.is_template), [tasks]);
+  
   useEffect(() => {
     const fetchSubtasks = async () => {
       if (!user) {
@@ -108,7 +111,8 @@ export default function Analytics() {
         setSubtasksLoading(false);
         return;
       }
-      const taskIds = tasks.map(t => t.id);
+      // Only get subtasks for non-template tasks
+      const taskIds = nonTemplateTasks.map(t => t.id);
       if (taskIds.length === 0) {
         setSubtasks([]);
         setSubtasksLoading(false);
@@ -128,7 +132,7 @@ export default function Analytics() {
     if (!tasksLoading) {
       fetchSubtasks();
     }
-  }, [user, tasks, tasksLoading]);
+  }, [user, nonTemplateTasks, tasksLoading]);
 
   // Get date ranges for current and previous periods
   const dateRanges = useMemo(() => {
