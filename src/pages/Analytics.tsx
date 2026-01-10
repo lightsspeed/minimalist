@@ -442,14 +442,14 @@ export default function Analytics() {
     value, 
     suffix = '', 
     change, 
-    icon: Icon,
+    emoji,
     id 
   }: { 
     title: string; 
     value: number; 
     suffix?: string; 
     change?: number; 
-    icon: React.ElementType;
+    emoji: string;
     id: string;
   }) => (
     <Card 
@@ -460,7 +460,7 @@ export default function Analytics() {
     >
       <CardContent className="p-4 sm:p-5">
         <div className="flex items-start justify-between mb-2">
-          <Icon className="h-5 w-5 text-muted-foreground" />
+          <span className="text-xl">{emoji}</span>
           {change !== undefined && (
             <span className={`text-xs font-medium flex items-center gap-0.5 ${
               change >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'
@@ -630,7 +630,7 @@ export default function Analytics() {
                 title="Tasks Completed" 
                 value={metrics.completed} 
                 change={metrics.completedChange}
-                icon={CheckCircle2}
+                emoji="✅"
               />
               <Card 
                 className={`bg-card border border-border/50 transition-all duration-300 cursor-pointer hover:border-border ${
@@ -640,7 +640,7 @@ export default function Analytics() {
               >
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex items-start justify-between mb-2">
-                    <Clock className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-xl">⏳</span>
                   </div>
                   <p className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
                     <AnimatedNumber value={metrics.pendingTasks} duration={800} />
@@ -656,7 +656,7 @@ export default function Analytics() {
                 title="Current Streak" 
                 value={streak}
                 suffix=" days"
-                icon={Flame}
+                emoji="🔥"
               />
               <MetricCard 
                 id="rate"
@@ -664,7 +664,7 @@ export default function Analytics() {
                 value={metrics.completionRate}
                 suffix="%"
                 change={metrics.completionRateChange}
-                icon={Target}
+                emoji="🎯"
               />
             </div>
 
