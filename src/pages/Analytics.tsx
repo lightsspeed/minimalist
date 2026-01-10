@@ -632,12 +632,25 @@ export default function Analytics() {
                 change={metrics.completedChange}
                 icon={CheckCircle2}
               />
-              <MetricCard 
-                id="pending"
-                title="Pending Tasks" 
-                value={metrics.pendingTasks}
-                icon={Clock}
-              />
+              <Card 
+                className={`bg-card border border-border/50 transition-all duration-300 cursor-pointer hover:border-border ${
+                  expandedMetric === 'pending' ? 'ring-2 ring-primary/20' : ''
+                }`}
+                onClick={() => setExpandedMetric(expandedMetric === 'pending' ? null : 'pending')}
+              >
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex items-start justify-between mb-2">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
+                    <AnimatedNumber value={metrics.pendingTasks} duration={800} />
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Pending Tasks</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {metrics.pendingMainTasks} tasks + {metrics.pendingSubtasks} subtasks
+                  </p>
+                </CardContent>
+              </Card>
               <MetricCard 
                 id="streak"
                 title="Current Streak" 
