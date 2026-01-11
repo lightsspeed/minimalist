@@ -232,27 +232,22 @@ export default function Analytics() {
       ? Math.round(((current.completed - previous.completed) / previous.completed) * 100)
       : current.completed > 0 ? 100 : 0;
 
-    // Completion rate based on ALL non-template tasks (not just period-specific)
-    const allNonTemplateTasks = tasks.filter(t => !t.is_template);
-    const allCompletedTasks = allNonTemplateTasks.filter(t => t.is_completed).length;
-    const allCompletedSubtasks = subtasks.filter(s => s.is_completed).length;
-    const totalAllItems = allNonTemplateTasks.length + subtasks.length;
-    const totalAllCompleted = allCompletedTasks + allCompletedSubtasks;
-    
-    const completionRate = totalAllItems > 0 
-      ? Math.round((totalAllCompleted / totalAllItems) * 100)
-      : 0;
-
-    // Completion rate change is not applicable for overall rate, so we set it to 0
-    const completionRateChange = 0;
-
     // Pending tasks (only from Dashboard: non-template, non-completed tasks + their subtasks)
     const pendingTasks = tasks.filter(t => !t.is_template && !t.is_completed);
     const pendingMainTasks = pendingTasks.length;
     const pendingTaskIds = new Set(pendingTasks.map(t => t.id));
     // Only count subtasks belonging to pending (non-completed) main tasks
-    const pendingSubtasks = subtasks.filter(s => !s.is_completed && pendingTaskIds.has(s.task_id)).length;
-    const totalPending = pendingMainTasks + pendingSubtasks;
+    const pendingSubtasksCount = subtasks.filter(s => !s.is_completed && pendingTaskIds.has(s.task_id)).length;
+    const totalPending = pendingMainTasks + pendingSubtasksCount;
+
+    // Completion rate = completed / (completed + pending)
+    const totalItems = current.completed + totalPending;
+    const completionRate = totalItems > 0 
+      ? Math.round((current.completed / totalItems) * 100)
+      : 0;
+
+    // Completion rate change is not applicable, so we set it to 0
+    const completionRateChange = 0;
 
     return {
       completed: current.completed,
@@ -262,7 +257,7 @@ export default function Analytics() {
       completionRateChange,
       pendingTasks: totalPending,
       pendingMainTasks,
-      pendingSubtasks
+      pendingSubtasks: pendingSubtasksCount
     };
   }, [dateRanges, tasks, subtasks, streak]);
 
