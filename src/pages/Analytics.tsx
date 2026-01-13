@@ -241,10 +241,17 @@ export default function Analytics() {
     const totalPending = pendingMainTasks + pendingSubtasksCount;
 
     // Completion rate = completed / (completed + pending)
-    const totalItems = current.completed + totalPending;
-    const completionRate = totalItems > 0 
-      ? Math.round((current.completed / totalItems) * 100)
-      : 0;
+    // If there are no pending items, rate is 100% (all done)
+    // If there are no completed items and no pending, rate is 0%
+    let completionRate: number;
+    if (totalPending === 0 && current.completed > 0) {
+      completionRate = 100;
+    } else if (totalPending === 0 && current.completed === 0) {
+      completionRate = 0;
+    } else {
+      const totalItems = current.completed + totalPending;
+      completionRate = Math.round((current.completed / totalItems) * 100);
+    }
 
     // Completion rate change is not applicable, so we set it to 0
     const completionRateChange = 0;
