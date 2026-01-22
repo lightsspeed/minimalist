@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { TaskModal } from '@/components/TaskModal';
+import { TimePicker } from '@/components/TimePicker';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,15 +74,7 @@ export default function Planning() {
     return format(now, 'HH:mm');
   };
 
-  // Get minimum time for today (current time)
-  const getMinTime = (selectedDate: Date | undefined) => {
-    if (!selectedDate) return undefined;
-    const now = new Date();
-    if (isSameDay(selectedDate, now)) {
-      return format(now, 'HH:mm');
-    }
-    return undefined;
-  };
+  // Removed time restriction - users can now create tasks for any time
 
   // Subtasks are loaded for the currently visible tasks (see effect below)
 
@@ -262,13 +255,7 @@ export default function Planning() {
       const [hours, minutes] = quickTaskTime.split(':').map(Number);
       dueDate = setMinutes(setHours(targetDate, hours), minutes);
       
-      // Validate that the date/time is not in the past
-      const now = new Date();
-      if (isBefore(dueDate, now)) {
-        toast.error('Cannot schedule tasks in the past');
-        setIsAddingTask(false);
-        return;
-      }
+      // Past time restriction removed - users can schedule tasks for any time
     }
 
     const result = await addTask(quickTaskTitle.trim(), '', [], dueDate);
@@ -297,10 +284,7 @@ export default function Planning() {
     setTimeout(() => quickAddInputRef.current?.focus(), 100);
   };
 
-  // Check if selected date is valid (not in the past)
-  const isDateDisabled = (date: Date) => {
-    return isBefore(startOfDay(date), startOfDay(new Date()));
-  };
+  // Date restriction removed - users can select any date
 
   // Separate pending and completed tasks
   const { pendingTasks, completedTasks } = useMemo(() => {
@@ -351,7 +335,6 @@ export default function Planning() {
   }
 
   const isLoading = tasksLoading || subtasksLoading;
-  const minTime = getMinTime(quickTaskDate || (view === 'day' ? currentDate : undefined));
 
   // Task item component for reuse
   const TaskItem = ({ task, compact = false }: { task: Task; compact?: boolean }) => {
@@ -484,22 +467,16 @@ export default function Planning() {
               mode="single"
               selected={quickTaskDate}
               onSelect={setQuickTaskDate}
-              disabled={isDateDisabled}
               initialFocus
               className={cn("p-3 pointer-events-auto")}
             />
           </PopoverContent>
         </Popover>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-          <Input
-            type="time"
-            value={quickTaskTime}
-            onChange={(e) => setQuickTaskTime(e.target.value)}
-            min={minTime}
-            className="h-9 flex-1 sm:w-28 text-base"
-          />
-        </div>
+        <TimePicker
+          value={quickTaskTime}
+          onChange={setQuickTaskTime}
+          className="h-9 w-full sm:w-auto"
+        />
         <Button
           size="sm"
           onClick={handleQuickAddTask}
