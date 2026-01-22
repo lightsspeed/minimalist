@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Clock, ChevronUp, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Clock, ChevronUp, ChevronDown, Sun, Sunset, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -12,9 +12,26 @@ interface TimePickerProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  showPresets?: boolean;
 }
 
-export function TimePicker({ value, onChange, className }: TimePickerProps) {
+const timePresets = [
+  { label: 'Morning', value: '09:00', icon: Sun, description: '9:00 AM' },
+  { label: 'Afternoon', value: '14:00', icon: Sun, description: '2:00 PM' },
+  { label: 'Evening', value: '18:00', icon: Sunset, description: '6:00 PM' },
+  { label: 'Night', value: '21:00', icon: Moon, description: '9:00 PM' },
+];
+
+const quickTimeOptions = [
+  { label: '8:00 AM', value: '08:00' },
+  { label: '10:00 AM', value: '10:00' },
+  { label: '12:00 PM', value: '12:00' },
+  { label: '3:00 PM', value: '15:00' },
+  { label: '5:00 PM', value: '17:00' },
+  { label: '8:00 PM', value: '20:00' },
+];
+
+export function TimePicker({ value, onChange, className, showPresets = true }: TimePickerProps) {
   const [open, setOpen] = useState(false);
   const [hours, setHours] = useState(() => {
     const [h] = value.split(':');
@@ -72,15 +89,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
     return `${h}:${m}`;
   };
 
-  const quickTimeOptions = [
-    { label: '9:00 AM', value: '09:00' },
-    { label: '12:00 PM', value: '12:00' },
-    { label: '3:00 PM', value: '15:00' },
-    { label: '6:00 PM', value: '18:00' },
-    { label: '9:00 PM', value: '21:00' },
-  ];
-
-  const selectQuickTime = (timeValue: string) => {
+  const selectTime = (timeValue: string) => {
     const [h, m] = timeValue.split(':');
     setHours(parseInt(h, 10));
     setMinutes(parseInt(m, 10));
@@ -93,6 +102,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          type="button"
           className={cn(
             "justify-start text-left font-normal gap-2",
             className
@@ -104,13 +114,45 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <div className="p-4 space-y-4">
+          {/* Presets */}
+          {showPresets && (
+            <div className="grid grid-cols-2 gap-2">
+              {timePresets.map((preset) => {
+                const Icon = preset.icon;
+                const isSelected = value === preset.value;
+                return (
+                  <Button
+                    key={preset.value}
+                    variant="outline"
+                    type="button"
+                    className={cn(
+                      "h-auto py-2 px-3 flex flex-col items-center gap-1",
+                      isSelected && "bg-primary text-primary-foreground hover:bg-primary/90"
+                    )}
+                    onClick={() => selectTime(preset.value)}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="text-xs font-medium">{preset.label}</span>
+                    <span className={cn(
+                      "text-[10px]",
+                      isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
+                    )}>
+                      {preset.description}
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Time spinner */}
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-4 pt-2 border-t">
             {/* Hours */}
             <div className="flex flex-col items-center">
               <Button
                 variant="ghost"
                 size="icon"
+                type="button"
                 className="h-8 w-8"
                 onClick={incrementHours}
               >
@@ -122,6 +164,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
               <Button
                 variant="ghost"
                 size="icon"
+                type="button"
                 className="h-8 w-8"
                 onClick={decrementHours}
               >
@@ -136,6 +179,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
               <Button
                 variant="ghost"
                 size="icon"
+                type="button"
                 className="h-8 w-8"
                 onClick={incrementMinutes}
               >
@@ -147,6 +191,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
               <Button
                 variant="ghost"
                 size="icon"
+                type="button"
                 className="h-8 w-8"
                 onClick={decrementMinutes}
               >
@@ -155,7 +200,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
             </div>
           </div>
 
-          {/* Quick options */}
+          {/* Quick time options */}
           <div className="border-t pt-3">
             <p className="text-xs text-muted-foreground mb-2">Quick select</p>
             <div className="flex flex-wrap gap-1.5">
@@ -164,11 +209,12 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
                   key={option.value}
                   variant="outline"
                   size="sm"
+                  type="button"
                   className={cn(
                     "h-7 text-xs",
                     value === option.value && "bg-primary text-primary-foreground hover:bg-primary/90"
                   )}
-                  onClick={() => selectQuickTime(option.value)}
+                  onClick={() => selectTime(option.value)}
                 >
                   {option.label}
                 </Button>
