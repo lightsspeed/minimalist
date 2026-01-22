@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, X, CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, setHours, setMinutes } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Task } from '@/hooks/useTasks';
+import { TimePicker } from '@/components/TimePicker';
 
 interface TaskModalProps {
   open: boolean;
@@ -34,6 +35,7 @@ export function TaskModal({ open, onOpenChange, onSubmit, task, mode }: TaskModa
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [dueTime, setDueTime] = useState<string>('09:00');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -43,12 +45,20 @@ export function TaskModal({ open, onOpenChange, onSubmit, task, mode }: TaskModa
         setTitle(task.title);
         setDescription(task.description || '');
         setTags(task.tags);
-        setDueDate(task.due_date ? new Date(task.due_date) : null);
+        if (task.due_date) {
+          const taskDate = new Date(task.due_date);
+          setDueDate(taskDate);
+          setDueTime(format(taskDate, 'HH:mm'));
+        } else {
+          setDueDate(null);
+          setDueTime('09:00');
+        }
       } else {
         setTitle('');
         setDescription('');
         setTags([]);
         setDueDate(null);
+        setDueTime('09:00');
       }
       setTagInput('');
       setError('');
@@ -83,7 +93,14 @@ export function TaskModal({ open, onOpenChange, onSubmit, task, mode }: TaskModa
     setError('');
     
     try {
-      await onSubmit(title.trim(), description.trim(), tags, dueDate);
+      // Combine date and time
+      let finalDueDate: Date | null = null;
+      if (dueDate) {
+        const [hours, minutes] = dueTime.split(':').map(Number);
+        finalDueDate = setMinutes(setHours(dueDate, hours), minutes);
+      }
+      
+      await onSubmit(title.trim(), description.trim(), tags, finalDueDate);
       onOpenChange(false);
     } catch (err) {
       setError('Something went wrong');
@@ -125,37 +142,52 @@ export function TaskModal({ open, onOpenChange, onSubmit, task, mode }: TaskModa
           </div>
 
           <div className="space-y-2">
-            <Label>Due Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !dueDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dueDate ? format(dueDate, "PPP") : <span>Pick a due date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dueDate || undefined}
-                  onSelect={(date) => setDueDate(date || null)}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
+            <Label>Due Date & Time</Label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    className={cn(
+                      "flex-1 justify-start text-left font-normal",
+                      !dueDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dueDate ? format(dueDate, "PPP") : <span>Pick a due date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dueDate || undefined}
+                    onSelect={(date) => setDueDate(date || null)}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              
+              {dueDate && (
+                <TimePicker
+                  value={dueTime}
+                  onChange={setDueTime}
+                  className="w-full sm:w-auto"
+                  showPresets={true}
                 />
-              </PopoverContent>
-            </Popover>
+              )}
+            </div>
             {dueDate && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className="text-xs text-muted-foreground"
-                onClick={() => setDueDate(null)}
+                onClick={() => {
+                  setDueDate(null);
+                  setDueTime('09:00');
+                }}
               >
                 <X className="h-3 w-3 mr-1" />
                 Clear due date
