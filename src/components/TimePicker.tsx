@@ -112,11 +112,11 @@ export function TimePicker({ value, onChange, className, showPresets = true }: T
           <span>{formatDisplay()}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-72 p-0" align="start">
         <div className="p-4 space-y-4">
-          {/* Presets */}
+          {/* Primary Presets - Morning, Afternoon, Evening, Night */}
           {showPresets && (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               {timePresets.map((preset) => {
                 const Icon = preset.icon;
                 const isSelected = value === preset.value;
@@ -126,15 +126,17 @@ export function TimePicker({ value, onChange, className, showPresets = true }: T
                     variant="outline"
                     type="button"
                     className={cn(
-                      "h-auto py-2 px-3 flex flex-col items-center gap-1",
-                      isSelected && "bg-primary text-primary-foreground hover:bg-primary/90"
+                      "h-auto py-3 px-4 flex flex-col items-center gap-1.5 rounded-xl border-2 transition-all",
+                      isSelected 
+                        ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90" 
+                        : "hover:border-primary/50 hover:bg-accent"
                     )}
                     onClick={() => selectTime(preset.value)}
                   >
-                    <Icon className="h-4 w-4" />
-                    <span className="text-xs font-medium">{preset.label}</span>
+                    <Icon className={cn("h-5 w-5", isSelected ? "text-primary-foreground" : "text-primary")} />
+                    <span className="text-sm font-semibold">{preset.label}</span>
                     <span className={cn(
-                      "text-[10px]",
+                      "text-xs",
                       isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
                     )}>
                       {preset.description}
@@ -145,64 +147,67 @@ export function TimePicker({ value, onChange, className, showPresets = true }: T
             </div>
           )}
 
-          {/* Time spinner */}
-          <div className="flex items-center justify-center gap-4 pt-2 border-t">
-            {/* Hours */}
-            <div className="flex flex-col items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                className="h-8 w-8"
-                onClick={incrementHours}
-              >
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-              <div className="text-3xl font-semibold tabular-nums w-12 text-center py-2">
-                {hours.toString().padStart(2, '0')}
+          {/* Custom Time Spinner */}
+          <div className="border-t pt-4">
+            <p className="text-xs text-muted-foreground mb-3 text-center">Or set custom time</p>
+            <div className="flex items-center justify-center gap-4 bg-muted/50 rounded-lg p-3">
+              {/* Hours */}
+              <div className="flex flex-col items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  className="h-8 w-8 rounded-full hover:bg-primary/10"
+                  onClick={incrementHours}
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <div className="text-2xl font-bold tabular-nums w-10 text-center py-1">
+                  {hours.toString().padStart(2, '0')}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  className="h-8 w-8 rounded-full hover:bg-primary/10"
+                  onClick={decrementHours}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                className="h-8 w-8"
-                onClick={decrementHours}
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </div>
 
-            <div className="text-3xl font-semibold">:</div>
+              <div className="text-2xl font-bold text-muted-foreground">:</div>
 
-            {/* Minutes */}
-            <div className="flex flex-col items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                className="h-8 w-8"
-                onClick={incrementMinutes}
-              >
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-              <div className="text-3xl font-semibold tabular-nums w-12 text-center py-2">
-                {minutes.toString().padStart(2, '0')}
+              {/* Minutes */}
+              <div className="flex flex-col items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  className="h-8 w-8 rounded-full hover:bg-primary/10"
+                  onClick={incrementMinutes}
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <div className="text-2xl font-bold tabular-nums w-10 text-center py-1">
+                  {minutes.toString().padStart(2, '0')}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  className="h-8 w-8 rounded-full hover:bg-primary/10"
+                  onClick={decrementMinutes}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                className="h-8 w-8"
-                onClick={decrementMinutes}
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
             </div>
           </div>
 
           {/* Quick time options */}
           <div className="border-t pt-3">
-            <p className="text-xs text-muted-foreground mb-2">Quick select</p>
+            <p className="text-xs text-muted-foreground mb-2">More options</p>
             <div className="flex flex-wrap gap-1.5">
               {quickTimeOptions.map((option) => (
                 <Button
@@ -211,7 +216,7 @@ export function TimePicker({ value, onChange, className, showPresets = true }: T
                   size="sm"
                   type="button"
                   className={cn(
-                    "h-7 text-xs",
+                    "h-7 text-xs rounded-full",
                     value === option.value && "bg-primary text-primary-foreground hover:bg-primary/90"
                   )}
                   onClick={() => selectTime(option.value)}
