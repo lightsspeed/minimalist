@@ -84,9 +84,10 @@ export function TimePicker({ value, onChange, className, showPresets = true }: T
   };
 
   const formatDisplay = () => {
-    const h = hours.toString().padStart(2, '0');
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHour = hours % 12 || 12;
     const m = minutes.toString().padStart(2, '0');
-    return `${h}:${m}`;
+    return `${displayHour}:${m} ${period}`;
   };
 
   const selectTime = (timeValue: string) => {
