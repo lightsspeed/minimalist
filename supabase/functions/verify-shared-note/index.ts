@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import { compareSync } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -185,8 +185,8 @@ serve(async (req) => {
         );
       }
 
-      // Verify password with bcrypt (constant-time comparison built-in)
-      const isValid = await bcrypt.compare(password, noteData.password_hash);
+      // Verify password with bcrypt (using sync version for Edge Runtime compatibility)
+      const isValid = compareSync(password, noteData.password_hash);
       
       // Log the attempt
       await logAttempt(supabase, share_token, ipAddress, isValid);
@@ -251,8 +251,8 @@ serve(async (req) => {
         );
       }
 
-      // Verify password with bcrypt (constant-time comparison built-in)
-      const isValid = await bcrypt.compare(password, noteData.password_hash);
+      // Verify password with bcrypt (using sync version for Edge Runtime compatibility)
+      const isValid = compareSync(password, noteData.password_hash);
       
       // Log the attempt
       await logAttempt(supabase, share_token, ipAddress, isValid);
