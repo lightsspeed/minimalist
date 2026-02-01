@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { LinkifiedText } from '@/components/LinkifiedText';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -283,7 +284,9 @@ export default function SharedPersonalNote() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-foreground whitespace-pre-wrap break-all">{note.content}</p>
+              <p className="text-foreground whitespace-pre-wrap break-all">
+                <LinkifiedText text={note.content} />
+              </p>
             </CardContent>
           </Card>
         )}
