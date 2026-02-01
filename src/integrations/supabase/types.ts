@@ -331,6 +331,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_shared_notes: { Args: never; Returns: undefined }
       cleanup_old_access_attempts: { Args: never; Returns: undefined }
       get_aggregated_metrics: {
         Args: never
