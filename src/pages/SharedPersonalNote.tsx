@@ -283,7 +283,7 @@ export default function SharedPersonalNote() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-foreground whitespace-pre-wrap">{note.content}</p>
+              <p className="text-foreground whitespace-pre-wrap break-all">{note.content}</p>
             </CardContent>
           </Card>
         )}
