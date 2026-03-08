@@ -19,9 +19,9 @@ spec:
     spec:
       containers:
       - name: lightsspeed-mini
-        # image: 670246014226.dkr.ecr.us-east-1.amazonaws.com/minimalist:v1.0.4
-        image: minimalist:local
-        imagePullPolicy: Never
+        # Production Best Practice: Fully Qualified Domain Name (FQDN) for Registry
+        image: docker.io/lightsspeed/minimalist:init
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
           name: http

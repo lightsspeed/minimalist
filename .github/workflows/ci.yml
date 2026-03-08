@@ -31,8 +31,7 @@ jobs:
           context: .
           push: true
           tags: |
-            lightsspeed/minimalist:latest
-            lightsspeed/minimalist:${{ github.sha }}
+            docker.io/lightsspeed/minimalist:${{ github.sha }}
           build-args: |
             VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
             VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
@@ -49,12 +48,10 @@ jobs:
 
       - name: Update Kubernetes Deployment with new Image Tag
         run: |
-          sed -i 's|image: lightsspeed/minimalist:.*|image: lightsspeed/minimalist:'"${{ github.sha }}"'|g' k8s/deployment.yaml
+          # Replace any existing image tag for this container with the new verified SHA
+          sed -i 's|image: .*minimalist.*|image: docker.io/lightsspeed/minimalist:'"${{ github.sha }}"'|g' k8s/deployment.yaml
           
-          # In case it currently says "image: minimalist:local"
-          sed -i 's|image: minimalist:local|image: lightsspeed/minimalist:'"${{ github.sha }}"'|g' k8s/deployment.yaml
-          
-          # Make sure imagePullPolicy is Always so minikube/argocd pulls the new remote tag
+          # Ensure ArgoCD pulls the remote declarative image
           sed -i 's|imagePullPolicy: Never|imagePullPolicy: Always|g' k8s/deployment.yaml
 
       - name: Commit and Push Changes
