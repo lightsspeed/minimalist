@@ -20,7 +20,7 @@ spec:
       containers:
       - name: lightsspeed-mini
         # Production Best Practice: Fully Qualified Domain Name (FQDN) for Registry
-        image: docker.io/lightsspeed/minimalist:init
+        image: docker.io/lightsspeed/minimalist:8c5b7355da9640fe9c14c02230bc89c8fa1fcfb4
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
