@@ -1,5 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
+metadata:
+  name: lightsspeed-mini
+  namespace: lightsspeed
+  labels:
+    app: lightsspeed-mini
+    version: v1.0.4
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: lightsspeed-mini
+  template:
+    metadata:
+      labels:
+        app: lightsspeed-mini
         version: v1.0.4
     spec:
       containers:
@@ -50,5 +66,3 @@ kind: Deployment
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
-
-
