@@ -17,8 +17,15 @@ spec:
     spec:
       securityContext:
         fsGroup: 472
-        runAsNonRoot: true
-        runAsUser: 472
+      initContainers:
+        - name: fix-permissions
+          image: busybox
+          command: ["sh", "-c", "chown -R 472:472 /var/lib/grafana"]
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
       containers:
         - name: grafana
           image: grafana/grafana:10.4.1
@@ -68,6 +75,8 @@ spec:
             timeoutSeconds: 3
           securityContext:
             allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 472
             capabilities:
               drop:
                 - ALL
