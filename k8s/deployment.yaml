@@ -5,9 +5,9 @@ metadata:
   namespace: lightsspeed
   labels:
     app: lightsspeed-mini
-    version: v1.0.2
+    version: v1.0.4
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: lightsspeed-mini
@@ -15,14 +15,15 @@ spec:
     metadata:
       labels:
         app: lightsspeed-mini
-        version: v1.0.2
+        version: v1.0.4
     spec:
       containers:
       - name: lightsspeed-mini
-        image: lightsspeed/minimalist:v1.0.2
-        imagePullPolicy: IfNotPresent
+        # image: 670246014226.dkr.ecr.us-east-1.amazonaws.com/minimalist:v1.0.4
+        image: minimalist:local
+        imagePullPolicy: Never
         ports:
-        - containerPort: 80
+        - containerPort: 8080
           name: http
           protocol: TCP
         env:
@@ -51,7 +52,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /
-            port: 80
+            port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
@@ -59,7 +60,7 @@ spec:
         readinessProbe:
           httpGet:
             path: /
-            port: 80
+            port: 8080
           initialDelaySeconds: 10
           periodSeconds: 5
           timeoutSeconds: 3
