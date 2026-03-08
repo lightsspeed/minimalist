@@ -7,7 +7,7 @@ metadata:
     app: lightsspeed-mini
     version: v1.0.4
 spec:
-  replicas: 2
+  replicas: 10
   selector:
     matchLabels:
       app: lightsspeed-mini
@@ -65,3 +65,4 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
+
