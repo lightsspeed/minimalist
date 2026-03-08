@@ -1,0 +1,33 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  annotations:
+    # Use Traefik ingress controller
+    kubernetes.io/ingress.class: traefik
+
+    # Use production issuer
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+    # Force Traefik to treat this as TLS on entrypoint but HTTP on backend
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/service.serversscheme: http
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - argocd.deployone.cloud
+    secretName: argocd-tls
+  rules:
+  - host: argocd.deployone.cloud
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: argocd-server
+            port:
+              number: 80 # Using 80 as we configured insecure mode

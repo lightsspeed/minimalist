@@ -1,0 +1,9 @@
+apiVersion: v2
+name: minimalist
+description: A Helm chart for the Minimalist application (React + Nginx)
+type: application
+version: 0.1.0
+appVersion: "v1.0.4"
+maintainers:
+  - name: lightsspeed
+    email: admin@deployone.cloud

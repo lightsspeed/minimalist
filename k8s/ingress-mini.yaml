@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minimalist-ingress
+  namespace: lightsspeed
+  labels:
+    component: minimalist
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - tasks.deployone.cloud
+    secretName: tasks-tls
+  rules:
+  - host: tasks.deployone.cloud
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: lightsspeed-mini-service
+            port:
+              number: 80

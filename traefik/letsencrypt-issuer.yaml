@@ -1,0 +1,43 @@
+---
+# Staging issuer (for testing - gives fake certificates)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    # Let's Encrypt staging server (for testing)
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+
+    # ⚠️ CHANGE THIS to your real email
+    email: akhileshchoure1@gmail.com
+
+    privateKeySecretRef:
+      name: letsencrypt-staging-key
+
+    # HTTP-01 challenge (Traefik will handle this automatically)
+    solvers:
+    - http01:
+        ingress:
+          class: traefik
+---
+# Production issuer (for real certificates)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    # Let's Encrypt production server
+    server: https://acme-v02.api.letsencrypt.org/directory
+
+    # ⚠️ CHANGE THIS to your real email
+    email: akhileshchoure1@gmail.com
+
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+
+    solvers:
+    - http01:
+        ingress:
+          class: traefik
