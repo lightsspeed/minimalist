@@ -11,10 +11,16 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      sha_short: ${{ steps.vars.outputs.sha_short }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Get Short SHA
+        id: vars
+        run: echo "sha_short=$(echo ${{ github.sha }} | cut -c1-6)" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -31,7 +37,7 @@ jobs:
           context: .
           push: true
           tags: |
-            docker.io/lightsspeed/minimalist:${{ github.sha }}
+            docker.io/lightsspeed/minimalist:${{ steps.vars.outputs.sha_short }}
           build-args: |
             VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
             VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
@@ -51,7 +57,7 @@ jobs:
       - name: Update Kubernetes Deployment with new Image Tag
         run: |
           # Replace any existing image tag for this container with the new verified SHA
-          sed -i 's|image: .*minimalist.*|image: docker.io/lightsspeed/minimalist:'"${{ github.sha }}"'|g' k8s/deployment.yaml
+          sed -i 's|image: .*minimalist.*|image: docker.io/lightsspeed/minimalist:'"${{ needs.build-and-push.outputs.sha_short }}"'|g' k8s/deployment.yaml
           
           # Ensure ArgoCD pulls the remote declarative image
           sed -i 's|imagePullPolicy: Never|imagePullPolicy: Always|g' k8s/deployment.yaml
@@ -61,5 +67,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add k8s/deployment.yaml
-          git commit -m "chore: update minimalist image tag to ${{ github.sha }} [skip ci]" || echo "No changes to commit"
+          git commit -m "chore: update minimalist image tag to ${{ needs.build-and-push.outputs.sha_short }} [skip ci]" || echo "No changes to commit"
           git push
