@@ -1,73 +1,198 @@
-# Welcome to your Lovable project
+# 🚀 Welcome to Minimalist Task management and notes sharing App.
 
-## Project info
+A modern web application built using **React, TypeScript, Vite, Tailwind CSS, and shadcn-ui**.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+This project provides a fast, scalable frontend architecture with a clean UI component system and modern developer experience.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+# 📌 Tech Stack
 
-**Use Lovable**
+This project uses the following technologies:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- **Vite** – Fast frontend build tool
+- **React** – UI library
+- **TypeScript** – Type-safe JavaScript
+- **Tailwind CSS** – Utility-first CSS framework
+- **shadcn-ui** – Modern component library
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+# 📂 Project Structure
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```
+project-root
+│
+├── src/                # Application source code
+│   ├── components/     # Reusable UI components
+│   ├── pages/          # Page level components
+│   ├── hooks/          # Custom React hooks
+│   ├── lib/            # Utility/helper functions
+│   └── main.tsx        # Application entry point
+│
+├── public/             # Static assets
+├── package.json        # Project dependencies
+├── vite.config.ts      # Vite configuration
+└── tsconfig.json       # TypeScript configuration
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+# 🛠️ Local Development Setup
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 1️⃣ Clone the Repository
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+```bash
+git clone <YOUR_REPOSITORY_URL>
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+---
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+## 2️⃣ Navigate to the Project Directory
+
+```bash
+cd <PROJECT_NAME>
+```
+
+---
+
+## 3️⃣ Install Dependencies
+
+```bash
+npm install
+```
+
+---
+
+## 4️⃣ Start Development Server
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will start with **hot reload enabled**.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Default URL:
 
-**Use GitHub Codespaces**
+```
+http://localhost:5173
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+---
 
-## What technologies are used for this project?
+# 📦 Build for Production
 
-This project is built with:
+To create an optimized production build:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+npm run build
+```
 
-## How can I deploy this project?
+This generates a production-ready build inside the **dist/** folder.
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+---
 
-## Can I connect a custom domain to my Lovable project?
+# 🔍 Preview Production Build
 
-Yes, you can!
+You can preview the production build locally using:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```bash
+npm run preview
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+---
+
+# 🎨 UI System
+
+The UI layer is built using:
+
+- **Tailwind CSS** for styling
+- **shadcn-ui components** for reusable UI components
+- Responsive design principles
+
+---
+
+# ⚡ Performance Features
+
+This project includes:
+
+- Vite lightning-fast builds
+- Code splitting
+- Tree shaking
+- Optimized static assets
+- Modern ES modules
+- Hot module replacement (HMR)
+
+---
+
+# 🧩 Extending the Project
+
+You can easily extend the project by adding:
+
+- API integrations
+- Authentication (JWT / OAuth)
+- State management (Redux / Zustand)
+- Backend services
+- Database integrations
+
+---
+
+# 🚀 Deployment
+
+To deploy the project:
+
+1. Build the production version
+
+```bash
+npm run build
+```
+
+2. Deploy the **dist/** folder to any static hosting platform such as:
+
+- Vercel
+- Netlify
+- AWS S3 + CloudFront
+- GitHub Pages
+- DigitalOcean App Platform
+
+---
+
+# 👨‍💻 Contributing
+
+Contributions are welcome!
+
+Steps:
+
+### 1. Fork the repository
+
+### 2. Create a feature branch
+
+```bash
+git checkout -b feature/new-feature
+```
+
+### 3. Commit your changes
+
+```bash
+git commit -m "feat: add new feature"
+```
+
+### 4. Push to the branch
+
+```bash
+git push origin feature/new-feature
+```
+
+### 5. Open a Pull Request
+
+---
+
+# 📄 License
+
+This project is licensed under the **MIT License**.
+
+---
+
+# ⭐ Support
+
+If you found this project useful, consider giving it a ⭐ on GitHub.
