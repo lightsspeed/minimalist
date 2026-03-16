@@ -49,7 +49,7 @@ export default function Notes() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Get unique folders from notes
