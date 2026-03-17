@@ -1396,12 +1396,15 @@ data:
             "multi": false,
             "name": "namespace",
             "options": [],
+            "query": {
             "query": "label_values(namespace)",
-            "refresh": 1,
-            "regex": "",
-            "skipUrlSync": false,
-            "sort": 0,
-            "type": "query"
+            "refId": "LokiVariableQuery"
+          },
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 0,
+          "type": "query"
           },
           {
             "current": { "selected": false, "text": "All", "value": "$__all" },
@@ -1413,12 +1416,15 @@ data:
             "multi": false,
             "name": "pod",
             "options": [],
+            "query": {
             "query": "label_values({namespace=\"$namespace\"}, pod)",
-            "refresh": 1,
-            "regex": "",
-            "skipUrlSync": false,
-            "sort": 0,
-            "type": "query"
+            "refId": "LokiVariableQuery"
+          },
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 0,
+          "type": "query"
           }
         ]
       },

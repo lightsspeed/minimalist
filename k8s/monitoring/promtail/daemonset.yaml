@@ -63,6 +63,15 @@ spec:
       tolerations:
         - effect: NoSchedule
           operator: Exists
+      initContainers:
+        - name: fix-permissions
+          image: busybox:latest
+          command: ["sh", "-c", "mkdir -p /run/promtail && chown -R 0:0 /run/promtail && chmod -R 777 /run/promtail"]
+          volumeMounts:
+            - name: run
+              mountPath: /run/promtail
+          securityContext:
+            runAsUser: 0
       containers:
         - name: promtail
           image: grafana/promtail:2.9.5
