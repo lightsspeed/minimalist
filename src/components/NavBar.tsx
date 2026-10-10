@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { UsageModal } from '@/components/UsageModal';
+import { NovuNotificationCenter } from '@/components/NovuNotificationCenter';
+import { useTasks } from '@/hooks/useTasks';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import {
@@ -23,10 +25,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { APP_VERSION } from '@/lib/version';
 import logo from '@/assets/logo.png';
 
 export function NavBar() {
   const { signOut, session } = useAuth();
+  const { tasks, updateTask } = useTasks();
   const location = useLocation();
   const navigate = useNavigate();
   const [usageModalOpen, setUsageModalOpen] = useState(false);
@@ -76,12 +80,21 @@ export function NavBar() {
                 className="h-8 w-8 flex-shrink-0 dark:brightness-0 dark:invert"
               />
               <h1 className="font-semibold text-lg truncate">Minimalist</h1>
+              <span className="text-xs font-mono text-muted-foreground/70 shrink-0 font-normal select-none">
+                v{APP_VERSION}
+              </span>
             </Link>
           </div>
 
           {/* Mobile Navigation */}
           {isMobile ? (
             <div className="flex items-center gap-1 flex-shrink-0">
+              <NovuNotificationCenter
+                tasks={tasks}
+                onCompleteTask={(id) => updateTask(id, { is_completed: true })}
+                userId={session?.user?.id}
+                userEmail={session?.user?.email}
+              />
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -161,6 +174,12 @@ export function NavBar() {
                     <TooltipContent>{item.label}</TooltipContent>
                   </Tooltip>
                 ))}
+                <NovuNotificationCenter
+                  tasks={tasks}
+                  onCompleteTask={(id) => updateTask(id, { is_completed: true })}
+                  userId={session?.user?.id}
+                  userEmail={session?.user?.email}
+                />
                 <ThemeToggle />
                 <Tooltip>
                   <TooltipTrigger asChild>

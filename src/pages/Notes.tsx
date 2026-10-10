@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { Plus, Trash2, FileText, Share2, FolderOpen, Tag, X, Search, Pin, ExternalLink } from 'lucide-react';
-import { MarkdownToolbar } from '@/components/MarkdownToolbar';
+import { RichTextEditor } from '@/components/RichTextEditor';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { NavBar } from '@/components/NavBar';
 import { NoteShareModal } from '@/components/NoteShareModal';
@@ -36,6 +35,21 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+
+function getNoteTitle(content: string): string {
+  if (!content) return 'Untitled';
+  const clean = content
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[#*_`~-]/g, '')
+    .trim();
+  if (!clean) return 'Untitled';
+  return clean.split('\n')[0].trim().slice(0, 80) || 'Untitled';
+}
 
 export default function Notes() {
   const { user, loading: authLoading } = useAuth();
@@ -284,11 +298,11 @@ export default function Notes() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <p className="text-sm font-medium text-foreground line-clamp-2">
-                                  {note.content.split('\n')[0] || 'Untitled'}
+                                  {getNoteTitle(note.content)}
                                 </p>
                               </TooltipTrigger>
                               <TooltipContent side="top" className="max-w-xs">
-                                <p className="text-sm">{note.content.split('\n')[0] || 'Untitled'}</p>
+                                <p className="text-sm">{getNoteTitle(note.content)}</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -425,20 +439,14 @@ export default function Notes() {
                     </div>
                   </div>
 
-                  <MarkdownToolbar 
-                    textareaRef={textareaRef}
-                    content={content}
-                    onContentChange={setContent}
-                  />
-
-                  <Textarea
-                    ref={textareaRef}
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Type your note here... (Markdown supported)"
-                    className="flex-1 min-h-[300px] md:min-h-[calc(100vh-320px)] resize-none border-0 focus-visible:ring-0 text-base leading-relaxed font-mono"
-                  />
+                  <div className="flex-1 min-h-[420px] pt-1">
+                    <RichTextEditor
+                      content={content}
+                      onChange={setContent}
+                      placeholder="Type your note here... (Formatted text, headings, lists, images)"
+                      maxCharacters={1000}
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="h-full flex items-center justify-center text-muted-foreground">

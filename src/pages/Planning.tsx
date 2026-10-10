@@ -162,7 +162,9 @@ export default function Planning() {
         return;
       }
 
-      setSubtasksLoading(true);
+      if (Object.keys(subtasksMap).length === 0) {
+        setSubtasksLoading(true);
+      }
       const { data, error } = await supabase
         .from('subtasks')
         .select('id, task_id, title, is_completed')
@@ -570,7 +572,7 @@ export default function Planning() {
                 {stats.completed + stats.completedSubtasks}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {stats.completed} tasks + {stats.completedSubtasks} subtasks
+                {stats.completed} {stats.completed === 1 ? 'task' : 'tasks'} + {stats.completedSubtasks} {stats.completedSubtasks === 1 ? 'subtask' : 'subtasks'}
               </p>
             </CardContent>
           </Card>
@@ -584,7 +586,7 @@ export default function Planning() {
                 {stats.pending + stats.pendingSubtasks}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {stats.pending} tasks + {stats.pendingSubtasks} subtasks
+                {stats.pending} {stats.pending === 1 ? 'task' : 'tasks'} + {stats.pendingSubtasks} {stats.pendingSubtasks === 1 ? 'subtask' : 'subtasks'}
               </p>
             </CardContent>
           </Card>
@@ -662,18 +664,16 @@ export default function Planning() {
                   <Collapsible open={completedOpen} onOpenChange={setCompletedOpen}>
                     <Card>
                       <CollapsibleTrigger asChild>
-                        <CardHeader className="pb-2 px-3 sm:px-6 cursor-pointer hover:bg-muted/50 transition-colors">
-                          <CardTitle className="text-sm sm:text-base font-medium flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Check className="h-4 w-4 text-success" />
-                              <span>Completed ({completedTasks.length})</span>
-                            </div>
-                            <ChevronDown className={cn(
-                              "h-4 w-4 text-muted-foreground transition-transform",
-                              completedOpen && "rotate-180"
-                            )} />
-                          </CardTitle>
-                        </CardHeader>
+                        <div className="flex items-center justify-between px-4 sm:px-6 py-4 cursor-pointer hover:bg-muted/50 transition-colors rounded-xl">
+                          <div className="flex items-center gap-2 text-sm sm:text-base font-medium">
+                            <Check className="h-4 w-4 text-success" />
+                            <span>Completed ({completedTasks.length})</span>
+                          </div>
+                          <ChevronDown className={cn(
+                            "h-4 w-4 text-muted-foreground transition-transform",
+                            completedOpen && "rotate-180"
+                          )} />
+                        </div>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <CardContent className="px-3 sm:px-6 pt-0">
@@ -745,18 +745,16 @@ export default function Planning() {
                   <Collapsible open={completedOpen} onOpenChange={setCompletedOpen}>
                     <Card>
                       <CollapsibleTrigger asChild>
-                        <CardHeader className="pb-2 px-3 sm:px-6 cursor-pointer hover:bg-muted/50 transition-colors">
-                          <CardTitle className="text-sm sm:text-base font-medium flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Check className="h-4 w-4 text-success" />
-                              <span>Completed ({completedTasks.length})</span>
-                            </div>
-                            <ChevronDown className={cn(
-                              "h-4 w-4 text-muted-foreground transition-transform",
-                              completedOpen && "rotate-180"
-                            )} />
-                          </CardTitle>
-                        </CardHeader>
+                        <div className="flex items-center justify-between px-4 sm:px-6 py-4 cursor-pointer hover:bg-muted/50 transition-colors rounded-xl">
+                          <div className="flex items-center gap-2 text-sm sm:text-base font-medium">
+                            <Check className="h-4 w-4 text-success" />
+                            <span>Completed ({completedTasks.length})</span>
+                          </div>
+                          <ChevronDown className={cn(
+                            "h-4 w-4 text-muted-foreground transition-transform",
+                            completedOpen && "rotate-180"
+                          )} />
+                        </div>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <CardContent className="px-3 sm:px-6 pt-0 space-y-4">

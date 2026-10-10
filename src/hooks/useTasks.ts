@@ -53,7 +53,10 @@ export function useTasks() {
 
   useEffect(() => {
     fetchTasks();
-  }, [user]);
+    // Depend on user.id only so a new user object with the same ID
+    // (e.g. after a token refresh on tab focus) won't trigger a re-fetch and blink.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const addTask = async (title: string, description: string, tags: string[], dueDate?: Date | null) => {
     if (!user) return { error: new Error('Not authenticated') };
