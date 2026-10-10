@@ -25,15 +25,27 @@ export const DEFAULT_NOVU_CONFIG: NovuConfig = {
 };
 
 export function getNovuConfig(): NovuConfig {
+  const envAppId = (import.meta.env.VITE_NOVU_APP_IDENTIFIER as string) || '';
+  const envApiKey = (import.meta.env.VITE_NOVU_API_KEY as string) || '';
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      return { ...DEFAULT_NOVU_CONFIG, ...JSON.parse(saved) };
+      const parsed = JSON.parse(saved);
+      return {
+        ...DEFAULT_NOVU_CONFIG,
+        ...parsed,
+        applicationIdentifier: envAppId || parsed.applicationIdentifier || DEFAULT_NOVU_CONFIG.applicationIdentifier,
+        apiKey: envApiKey || parsed.apiKey || DEFAULT_NOVU_CONFIG.apiKey,
+      };
     }
   } catch (e) {
     console.error('Failed to read Novu config:', e);
   }
-  return DEFAULT_NOVU_CONFIG;
+  return {
+    ...DEFAULT_NOVU_CONFIG,
+    applicationIdentifier: envAppId || DEFAULT_NOVU_CONFIG.applicationIdentifier,
+    apiKey: envApiKey || DEFAULT_NOVU_CONFIG.apiKey,
+  };
 }
 
 export function saveNovuConfig(config: Partial<NovuConfig>): NovuConfig {
@@ -108,39 +120,58 @@ export async function sendEmailDueNotification(
   const subscriberId = recipientEmail;
 
   try {
-    // We use Vite's local proxy (/api/n-proxy) configured in vite.config.ts
-    // to bypass CORS and Adblockers when calling Novu's API directly from the frontend.
-    const response = await fetch('/api/n-proxy', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `ApiKey ${config.apiKey}`,
+    // In local dev mode we use Vite's proxy (/api/n-proxy) to bypass CORS and Adblockers.
+    // In production, if /api/n-proxy is not proxied by the static server, we fallback to Novu's API directly.
+    let endpoint = '/api/n-proxy';
+    if (import.meta.env.PROD) {
+      endpoint = 'https://api.novu.co/v1/events/trigger';
+    }
+
+    const payloadBody = JSON.stringify({
+      name: 'task-due-alert',
+      to: {
+        subscriberId,
+        email: recipientEmail,
       },
-      body: JSON.stringify({
-        name: 'task-due-alert',
-        to: {
-          subscriberId,
-          email: recipientEmail,
-        },
-        payload: {
-          taskTitle: task.title,
-          taskDescription: task.description || '',
-          dueDate: task.due_date
-            ? new Date(task.due_date).toLocaleString('en-US', {
-                weekday: 'short', month: 'short', day: 'numeric',
-                hour: '2-digit', minute: '2-digit',
-              })
-            : 'Not set',
-          timeLabel,
-          appUrl: window.location.origin,
-          urgency: timeLabel.toLowerCase().includes('overdue')
-            ? 'OVERDUE'
-            : timeLabel.toLowerCase().includes('minute')
-            ? 'CRITICAL'
-            : 'UPCOMING',
-        },
-      }),
+      payload: {
+        taskTitle: task.title,
+        taskDescription: task.description || '',
+        dueDate: task.due_date
+          ? new Date(task.due_date).toLocaleString('en-US', {
+              weekday: 'short', month: 'short', day: 'numeric',
+              hour: '2-digit', minute: '2-digit',
+            })
+          : 'Not set',
+        timeLabel,
+        appUrl: window.location.origin,
+        urgency: timeLabel.toLowerCase().includes('overdue')
+          ? 'OVERDUE'
+          : timeLabel.toLowerCase().includes('minute')
+          ? 'CRITICAL'
+          : 'UPCOMING',
+      },
     });
+
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `ApiKey ${config.apiKey}`,
+    };
+
+    let response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: payloadBody,
+    }).catch(() => null);
+
+    // If local proxy 404s in production, try direct Novu API URL
+    if (!response || response.status === 404) {
+      endpoint = 'https://api.novu.co/v1/events/trigger';
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: payloadBody,
+      });
+    }
 
     if (response.ok) {
       logEmailDispatch({ taskId: task.id, taskTitle: task.title, email: recipientEmail, timeLabel });

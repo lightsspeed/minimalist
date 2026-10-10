@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Inbox, InboxContent } from '@novu/react';
+import { dark } from '@novu/react/themes';
 import { APP_VERSION_INFO } from '@/lib/version';
 
 interface NovuNotificationCenterProps {
@@ -191,17 +192,17 @@ export function NovuNotificationCenter({
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
+            className="relative h-9 w-9 rounded-lg hover:bg-muted/60 transition-all text-muted-foreground hover:text-foreground"
             title="Notifications & Due Alerts"
           >
-            <Bell className={cn('h-5 w-5', alertsCount > 0 && 'text-foreground')} />
+            <Bell className={cn('h-4.5 w-4.5 transition-colors', alertsCount > 0 && 'text-foreground')} />
             {alertsCount > 0 && (
               <span
                 className={cn(
-                  'absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm ring-2 ring-background',
+                  'absolute top-1 right-1 flex h-3.5 min-w-[14px] px-1 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-sm ring-2 ring-background',
                   overdueCount > 0 || criticalCount > 0
-                    ? 'bg-rose-500 animate-pulse'
-                    : 'bg-blue-600'
+                    ? 'bg-rose-500'
+                    : 'bg-primary'
                 )}
               >
                 {alertsCount}
@@ -368,10 +369,22 @@ export function NovuNotificationCenter({
                       Dashboard <ExternalLink className="h-2.5 w-2.5" />
                     </a>
                   </div>
-                  <div className="rounded-lg overflow-hidden border border-border min-h-[400px] relative">
+                  <div className="rounded-lg overflow-hidden border border-border min-h-[400px] relative bg-background">
                     <Inbox
                       applicationIdentifier={config.applicationIdentifier}
                       subscriberId={userId}
+                      appearance={{
+                        baseTheme: dark,
+                        variables: {
+                          colorBackground: '#09090b',
+                          colorForeground: '#f4f4f5',
+                          colorText: '#f4f4f5',
+                          colorTextSecondary: '#a1a1aa',
+                          colorPrimary: '#3b82f6',
+                          colorPrimaryForeground: '#ffffff',
+                          colorNeutral: '#27272a',
+                        },
+                      }}
                     >
                       <InboxContent />
                     </Inbox>
@@ -437,55 +450,42 @@ export function NovuNotificationCenter({
 
           <div className="space-y-4 py-2">
 
-            {/* ── Novu Credentials ── */}
+            {/* ── Novu Connection Status ── */}
             <div className="space-y-2 p-3 rounded-lg border border-border/60 bg-muted/20">
-              <div className="flex items-center justify-between mb-0.5">
+              <div className="flex items-center justify-between">
                 <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5 text-primary" /> Novu Connection
+                  <Zap className="h-3.5 w-3.5 text-primary" /> Novu Notification Engine
                 </Label>
                 {novuConfigured ? (
-                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
-                    ✓ Connected
+                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    ✓ Active
                   </span>
                 ) : (
-                  <a
-                    href="https://dashboard.novu.co"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] text-primary hover:underline flex items-center gap-0.5"
-                  >
-                    Get credentials <ExternalLink className="h-2.5 w-2.5" />
-                  </a>
+                  <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                    Not Configured
+                  </span>
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <Input
-                  placeholder="App Identifier  (from Novu Dashboard → Settings)"
-                  value={appIdInput}
-                  onChange={(e) => setAppIdInput(e.target.value)}
-                  className="h-8 text-xs font-mono"
-                />
-                <Input
-                  type="password"
-                  placeholder="API Key  (from Novu Dashboard → API Keys)"
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  className="h-8 text-xs font-mono"
-                />
-              </div>
-
-              {!novuConfigured && (
-                <div className="pt-1 p-2 rounded-md bg-blue-500/5 border border-blue-500/20 text-[11px] space-y-1">
-                  <div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                    <Info className="h-3 w-3" /> How to get your Novu credentials
-                  </div>
-                  <ol className="text-muted-foreground space-y-0.5 pl-3.5 list-decimal">
-                    <li>Sign up free at <a href="https://novu.co" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">novu.co</a></li>
-                    <li>Go to <strong>Settings → API Keys</strong> — copy your App ID &amp; API Key</li>
-                    <li>Create a workflow named <code className="bg-muted px-1 rounded text-[10px]">task-due-alert</code> with an Email step</li>
-                    <li>Paste both keys above and Save</li>
-                  </ol>
+              {Boolean(import.meta.env.VITE_NOVU_APP_IDENTIFIER) ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Global notification server connected via environment config.
+                </p>
+              ) : (
+                <div className="space-y-1.5 pt-1">
+                  <Input
+                    placeholder="App Identifier (VITE_NOVU_APP_IDENTIFIER)"
+                    value={appIdInput}
+                    onChange={(e) => setAppIdInput(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
+                  <Input
+                    type="password"
+                    placeholder="API Key (VITE_NOVU_API_KEY)"
+                    value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
                 </div>
               )}
             </div>
