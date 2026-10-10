@@ -80,7 +80,7 @@ export function NavBar() {
                 className="h-8 w-8 flex-shrink-0 dark:brightness-0 dark:invert"
               />
               <h1 className="font-semibold text-lg truncate">Minimalist</h1>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0 font-medium">
+              <span className="text-xs font-mono text-muted-foreground/70 shrink-0 font-normal select-none">
                 v{APP_VERSION}
               </span>
             </Link>

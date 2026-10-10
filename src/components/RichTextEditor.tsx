@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -17,7 +17,6 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  AlignJustify,
   List,
   ListOrdered,
   Link as LinkIcon,
@@ -32,7 +31,7 @@ import {
   Quote,
   Minus,
   Loader2,
-  Wand2
+  Wand2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -160,13 +159,12 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: cn(
-          'prose dark:prose-invert max-w-none focus:outline-none min-h-[260px] p-4 text-foreground/90 font-normal leading-relaxed',
+          'prose dark:prose-invert max-w-none focus:outline-none min-h-[260px] p-4 text-foreground dark:text-zinc-100 font-normal leading-relaxed',
           className
         ),
       },
     },
     onUpdate: ({ editor }) => {
-      // Return HTML for rich styling preservation
       const html = editor.getHTML();
       onChange(html);
     },
@@ -177,13 +175,11 @@ export function RichTextEditor({
     if (!editor) return;
     const currentHtml = editor.getHTML();
     if (content !== currentHtml) {
-      // If content is empty or different, set content
       if (!content || content.trim() === '') {
         if (currentHtml !== '<p></p>') {
           editor.commands.setContent('', false);
         }
       } else if (content !== currentHtml) {
-        // Only update if not currently focused to avoid jumpy cursor
         if (!editor.isFocused) {
           editor.commands.setContent(content, false);
         }
@@ -243,11 +239,11 @@ export function RichTextEditor({
     setImagePopoverOpen(false);
   };
 
-  // AI Assist feature actions
+  // AI Assist actions
   const handleAiAction = async (action: 'improve' | 'concise' | 'expand' | 'bullets' | 'fix') => {
     if (!editor) return;
     setIsAiLoading(true);
-    
+
     const { from, to } = editor.state.selection;
     const selectedText = editor.state.doc.textBetween(from, to, ' ');
     const targetText = selectedText || editor.getText();
@@ -259,8 +255,7 @@ export function RichTextEditor({
     }
 
     try {
-      // Smart text processor
-      await new Promise((r) => setTimeout(r, 650)); // smooth feedback
+      await new Promise((r) => setTimeout(r, 650));
       let transformed = targetText;
 
       switch (action) {
@@ -272,12 +267,13 @@ export function RichTextEditor({
             .replace(/\b(bad)\b/gi, 'suboptimal');
           break;
         case 'concise':
-          transformed = targetText
-            .split('.')
-            .filter(Boolean)
-            .map((s) => s.trim())
-            .slice(0, 3)
-            .join('. ') + '.';
+          transformed =
+            targetText
+              .split('.')
+              .filter(Boolean)
+              .map((s) => s.trim())
+              .slice(0, 3)
+              .join('. ') + '.';
           break;
         case 'expand':
           transformed = `${targetText}\n\nFurthermore, this initiative aligns with strategic objectives, ensuring continuous refinement and high efficiency throughout the execution timeline.`;
@@ -311,7 +307,7 @@ export function RichTextEditor({
 
   if (!editor) {
     return (
-      <div className="h-64 flex items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/60 text-muted-foreground text-sm">
+      <div className="h-64 flex items-center justify-center rounded-xl border border-border dark:border-zinc-800 bg-card dark:bg-zinc-950/60 text-muted-foreground text-sm">
         <Loader2 className="h-5 w-5 animate-spin mr-2" /> Initializing editor...
       </div>
     );
@@ -322,8 +318,8 @@ export function RichTextEditor({
 
   return (
     <div className="w-full flex flex-col space-y-2">
-      {/* Top Floating / Attached Toolbar - Matches User's Exact Screenshot */}
-      <div className="flex items-center gap-1.5 flex-wrap p-1.5 bg-zinc-900/90 dark:bg-zinc-950/90 backdrop-blur-md rounded-xl border border-zinc-800 shadow-sm text-zinc-300">
+      {/* Top Attached Toolbar - Dual Light & Dark Theme */}
+      <div className="flex items-center gap-1.5 flex-wrap p-1.5 bg-muted/40 backdrop-blur-md rounded-xl border border-border shadow-sm text-foreground">
         {/* Font Family Dropdown */}
         <Popover open={fontDropdownOpen} onOpenChange={setFontDropdownOpen}>
           <PopoverTrigger asChild>
@@ -331,14 +327,14 @@ export function RichTextEditor({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-8 gap-1.5 px-2.5 text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/80 rounded-lg border border-zinc-800/60"
+              className="h-8 gap-1.5 px-2.5 text-xs font-medium text-foreground hover:bg-background rounded-lg border border-border"
             >
-              <Type className="h-3.5 w-3.5 text-zinc-400" />
+              <Type className="h-3.5 w-3.5 text-muted-foreground" />
               <span>{currentFont}</span>
               <ChevronDown className="h-3 w-3 opacity-60 ml-0.5" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-40 p-1 bg-zinc-900 border-zinc-800 text-zinc-200" align="start">
+          <PopoverContent className="w-40 p-1 bg-popover border-border text-popover-foreground" align="start">
             <div className="space-y-0.5">
               {FONT_FAMILIES.map((font) => (
                 <button
@@ -348,13 +344,13 @@ export function RichTextEditor({
                   className={cn(
                     'w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-md text-left transition-colors',
                     currentFont === font.label
-                      ? 'bg-zinc-800 text-white font-medium'
-                      : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
+                      ? 'bg-muted text-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                   )}
                   style={{ fontFamily: font.value }}
                 >
                   <span>{font.label}</span>
-                  {currentFont === font.label && <Check className="h-3.5 w-3.5 text-blue-400" />}
+                  {currentFont === font.label && <Check className="h-3.5 w-3.5 text-primary" />}
                 </button>
               ))}
             </div>
@@ -368,13 +364,13 @@ export function RichTextEditor({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-8 gap-1.5 px-2.5 text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/80 rounded-lg border border-zinc-800/60"
+              className="h-8 gap-1.5 px-2.5 text-xs font-medium text-foreground hover:bg-background rounded-lg border border-border"
             >
               <span>{currentSize}</span>
               <ChevronDown className="h-3 w-3 opacity-60 ml-0.5" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-28 p-1 bg-zinc-900 border-zinc-800 text-zinc-200" align="start">
+          <PopoverContent className="w-28 p-1 bg-popover border-border text-popover-foreground" align="start">
             <div className="space-y-0.5">
               {FONT_SIZES.map((size) => (
                 <button
@@ -384,19 +380,19 @@ export function RichTextEditor({
                   className={cn(
                     'w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-md text-left transition-colors',
                     currentSize === size.label
-                      ? 'bg-zinc-800 text-white font-medium'
-                      : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
+                      ? 'bg-muted text-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                   )}
                 >
                   <span>{size.label}</span>
-                  {currentSize === size.label && <Check className="h-3.5 w-3.5 text-blue-400" />}
+                  {currentSize === size.label && <Check className="h-3.5 w-3.5 text-primary" />}
                 </button>
               ))}
             </div>
           </PopoverContent>
         </Popover>
 
-        <div className="h-5 w-[1px] bg-zinc-800 mx-0.5" />
+        <div className="h-5 w-[1px] bg-border mx-0.5" />
 
         {/* Bold */}
         <Button
@@ -405,8 +401,8 @@ export function RichTextEditor({
           size="icon"
           onClick={() => editor.chain().focus().toggleBold().run()}
           className={cn(
-            'h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors',
-            editor.isActive('bold') && 'bg-zinc-800 text-white font-bold'
+            'h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors',
+            editor.isActive('bold') && 'bg-muted text-foreground font-bold'
           )}
           title="Bold (Ctrl+B)"
         >
@@ -420,8 +416,8 @@ export function RichTextEditor({
           size="icon"
           onClick={() => editor.chain().focus().toggleItalic().run()}
           className={cn(
-            'h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors',
-            editor.isActive('italic') && 'bg-zinc-800 text-white'
+            'h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors',
+            editor.isActive('italic') && 'bg-muted text-foreground'
           )}
           title="Italic (Ctrl+I)"
         >
@@ -435,8 +431,8 @@ export function RichTextEditor({
           size="icon"
           onClick={() => editor.chain().focus().toggleUnderline().run()}
           className={cn(
-            'h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors',
-            editor.isActive('underline') && 'bg-zinc-800 text-white'
+            'h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors',
+            editor.isActive('underline') && 'bg-muted text-foreground'
           )}
           title="Underline (Ctrl+U)"
         >
@@ -450,14 +446,14 @@ export function RichTextEditor({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 relative group"
+              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted relative group"
               title="Text Color"
             >
-              <span className="h-3.5 w-3.5 rounded-full bg-blue-500 ring-2 ring-zinc-700/80 group-hover:ring-zinc-400 transition-all" />
+              <span className="h-3.5 w-3.5 rounded-full bg-blue-500 ring-2 ring-border group-hover:ring-primary/40 transition-all" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800" align="center">
-            <div className="text-[11px] font-medium text-zinc-400 mb-2 px-1">Palette</div>
+          <PopoverContent className="w-48 p-2 bg-popover border-border" align="center">
+            <div className="text-[11px] font-medium text-muted-foreground mb-2 px-1">Palette</div>
             <div className="grid grid-cols-5 gap-1.5">
               {PALETTE_COLORS.map((col) => (
                 <button
@@ -466,7 +462,7 @@ export function RichTextEditor({
                   onClick={() => handleSelectColor(col.value)}
                   title={col.label}
                   className={cn(
-                    'h-6 w-6 rounded-full flex items-center justify-center transition-transform hover:scale-110 border border-zinc-700',
+                    'h-6 w-6 rounded-full flex items-center justify-center transition-transform hover:scale-110 border border-border',
                     col.bg
                   )}
                 />
@@ -475,7 +471,7 @@ export function RichTextEditor({
           </PopoverContent>
         </Popover>
 
-        <div className="h-5 w-[1px] bg-zinc-800 mx-0.5" />
+        <div className="h-5 w-[1px] bg-border dark:bg-zinc-800 mx-0.5" />
 
         {/* Align Left */}
         <Button
@@ -484,8 +480,8 @@ export function RichTextEditor({
           size="icon"
           onClick={() => editor.chain().focus().setTextAlign('left').run()}
           className={cn(
-            'h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800',
-            editor.isActive({ textAlign: 'left' }) && 'bg-zinc-800 text-white'
+            'h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted',
+            editor.isActive({ textAlign: 'left' }) && 'bg-muted text-foreground'
           )}
           title="Align Left"
         >
@@ -499,12 +495,27 @@ export function RichTextEditor({
           size="icon"
           onClick={() => editor.chain().focus().setTextAlign('center').run()}
           className={cn(
-            'h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800',
-            editor.isActive({ textAlign: 'center' }) && 'bg-zinc-800 text-white'
+            'h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted',
+            editor.isActive({ textAlign: 'center' }) && 'bg-muted text-foreground'
           )}
           title="Align Center"
         >
           <AlignCenter className="h-4 w-4" />
+        </Button>
+
+        {/* Align Right */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => editor.chain().focus().setTextAlign('right').run()}
+          className={cn(
+            'h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted',
+            editor.isActive({ textAlign: 'right' }) && 'bg-muted text-foreground'
+          )}
+          title="Align Right"
+        >
+          <AlignRight className="h-4 w-4" />
         </Button>
 
         {/* Bullet List */}
@@ -514,8 +525,8 @@ export function RichTextEditor({
           size="icon"
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           className={cn(
-            'h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800',
-            editor.isActive('bulletList') && 'bg-zinc-800 text-white'
+            'h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted',
+            editor.isActive('bulletList') && 'bg-muted text-foreground'
           )}
           title="Bullet List"
         >
@@ -529,15 +540,15 @@ export function RichTextEditor({
           size="icon"
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           className={cn(
-            'h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800',
-            editor.isActive('orderedList') && 'bg-zinc-800 text-white'
+            'h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted',
+            editor.isActive('orderedList') && 'bg-muted text-foreground'
           )}
           title="Numbered List"
         >
           <ListOrdered className="h-4 w-4" />
         </Button>
 
-        <div className="h-5 w-[1px] bg-zinc-800 mx-0.5" />
+        <div className="h-5 w-[1px] bg-border dark:bg-zinc-800 mx-0.5" />
 
         {/* Link */}
         <Popover open={linkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
@@ -547,23 +558,23 @@ export function RichTextEditor({
               variant="ghost"
               size="icon"
               className={cn(
-                'h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800',
-                editor.isActive('link') && 'bg-zinc-800 text-blue-400'
+                'h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted',
+                editor.isActive('link') && 'bg-muted text-primary'
               )}
               title="Insert Link"
             >
               <LinkIcon className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-72 p-3 bg-zinc-900 border-zinc-800 text-zinc-200" align="start">
+          <PopoverContent className="w-72 p-3 bg-popover border-border text-popover-foreground" align="start">
             <div className="space-y-2">
-              <div className="text-xs font-medium text-zinc-300">Insert Link</div>
+              <div className="text-xs font-medium text-foreground">Insert Link</div>
               <Input
                 placeholder="https://example.com"
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleApplyLink()}
-                className="h-8 text-xs bg-zinc-950 border-zinc-800"
+                className="h-8 text-xs bg-background border-input"
               />
               <div className="flex justify-end gap-1.5 pt-1">
                 {editor.isActive('link') && (
@@ -575,7 +586,7 @@ export function RichTextEditor({
                       editor.chain().focus().unsetLink().run();
                       setLinkPopoverOpen(false);
                     }}
-                    className="h-7 text-xs text-rose-400 hover:bg-rose-500/10"
+                    className="h-7 text-xs text-rose-500 dark:text-rose-400 hover:bg-rose-500/10"
                   >
                     Remove
                   </Button>
@@ -584,7 +595,7 @@ export function RichTextEditor({
                   type="button"
                   size="sm"
                   onClick={handleApplyLink}
-                  className="h-7 text-xs bg-blue-600 hover:bg-blue-500 text-white"
+                  className="h-7 text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   Apply
                 </Button>
@@ -600,28 +611,28 @@ export function RichTextEditor({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800"
+              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
               title="Insert Image URL"
             >
               <ImageIcon className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-72 p-3 bg-zinc-900 border-zinc-800 text-zinc-200" align="start">
+          <PopoverContent className="w-72 p-3 bg-popover border-border text-popover-foreground" align="start">
             <div className="space-y-2">
-              <div className="text-xs font-medium text-zinc-300">Insert Image by URL</div>
+              <div className="text-xs font-medium text-foreground">Insert Image by URL</div>
               <Input
                 placeholder="https://images.unsplash.com/..."
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleApplyImage()}
-                className="h-8 text-xs bg-zinc-950 border-zinc-800"
+                className="h-8 text-xs bg-background border-input"
               />
               <div className="flex justify-end gap-1.5 pt-1">
                 <Button
                   type="button"
                   size="sm"
                   onClick={handleApplyImage}
-                  className="h-7 text-xs bg-blue-600 hover:bg-blue-500 text-white"
+                  className="h-7 text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   Insert
                 </Button>
@@ -637,53 +648,53 @@ export function RichTextEditor({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-lg text-zinc-400 hover:text-indigo-400 hover:bg-indigo-950/40 relative"
+              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 relative"
               title="AI Assistant"
             >
               {isAiLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
               ) : (
-                <Sparkles className="h-4 w-4 text-indigo-400" />
+                <Sparkles className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-56 p-1.5 bg-zinc-900 border-zinc-800 text-zinc-200" align="end">
-            <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5 border-b border-zinc-800 mb-1">
+          <PopoverContent className="w-56 p-1.5 bg-popover border-border text-popover-foreground" align="end">
+            <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 border-b border-border mb-1">
               <Wand2 className="h-3 w-3" /> AI Quick Actions
             </div>
             <div className="space-y-0.5">
               <button
                 type="button"
                 onClick={() => handleAiAction('improve')}
-                className="w-full text-left px-2.5 py-1.5 text-xs rounded-md text-zinc-300 hover:bg-indigo-950/50 hover:text-indigo-200 transition-colors flex items-center gap-2"
+                className="w-full text-left px-2.5 py-1.5 text-xs rounded-md text-foreground hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors flex items-center gap-2"
               >
                 <span>✨</span> Improve vocabulary & tone
               </button>
               <button
                 type="button"
                 onClick={() => handleAiAction('concise')}
-                className="w-full text-left px-2.5 py-1.5 text-xs rounded-md text-zinc-300 hover:bg-indigo-950/50 hover:text-indigo-200 transition-colors flex items-center gap-2"
+                className="w-full text-left px-2.5 py-1.5 text-xs rounded-md text-foreground dark:text-zinc-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors flex items-center gap-2"
               >
                 <span>✂️</span> Make concise & crisp
               </button>
               <button
                 type="button"
                 onClick={() => handleAiAction('expand')}
-                className="w-full text-left px-2.5 py-1.5 text-xs rounded-md text-zinc-300 hover:bg-indigo-950/50 hover:text-indigo-200 transition-colors flex items-center gap-2"
+                className="w-full text-left px-2.5 py-1.5 text-xs rounded-md text-foreground dark:text-zinc-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors flex items-center gap-2"
               >
                 <span>💡</span> Expand with details
               </button>
               <button
                 type="button"
                 onClick={() => handleAiAction('bullets')}
-                className="w-full text-left px-2.5 py-1.5 text-xs rounded-md text-zinc-300 hover:bg-indigo-950/50 hover:text-indigo-200 transition-colors flex items-center gap-2"
+                className="w-full text-left px-2.5 py-1.5 text-xs rounded-md text-foreground dark:text-zinc-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors flex items-center gap-2"
               >
                 <span>📋</span> Turn into bullet summary
               </button>
               <button
                 type="button"
                 onClick={() => handleAiAction('fix')}
-                className="w-full text-left px-2.5 py-1.5 text-xs rounded-md text-zinc-300 hover:bg-indigo-950/50 hover:text-indigo-200 transition-colors flex items-center gap-2"
+                className="w-full text-left px-2.5 py-1.5 text-xs rounded-md text-foreground dark:text-zinc-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors flex items-center gap-2"
               >
                 <span>🔍</span> Fix punctuation & grammar
               </button>
@@ -691,8 +702,8 @@ export function RichTextEditor({
           </PopoverContent>
         </Popover>
 
-        {/* Extra formatting items in toolbar */}
-        <div className="h-5 w-[1px] bg-zinc-800 mx-0.5" />
+        {/* Extra formatting items */}
+        <div className="h-5 w-[1px] bg-border mx-0.5" />
 
         <Button
           type="button"
@@ -700,8 +711,8 @@ export function RichTextEditor({
           size="icon"
           onClick={() => editor.chain().focus().toggleCodeBlock().run()}
           className={cn(
-            'h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800',
-            editor.isActive('codeBlock') && 'bg-zinc-800 text-white'
+            'h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted',
+            editor.isActive('codeBlock') && 'bg-muted text-foreground'
           )}
           title="Code Block"
         >
@@ -714,8 +725,8 @@ export function RichTextEditor({
           size="icon"
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
           className={cn(
-            'h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800',
-            editor.isActive('blockquote') && 'bg-zinc-800 text-white'
+            'h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted',
+            editor.isActive('blockquote') && 'bg-muted text-foreground'
           )}
           title="Blockquote"
         >
@@ -727,7 +738,7 @@ export function RichTextEditor({
           variant="ghost"
           size="icon"
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
-          className="h-8 w-8 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800"
+          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
           title="Divider Line"
         >
           <Minus className="h-4 w-4" />
@@ -740,7 +751,7 @@ export function RichTextEditor({
             size="icon"
             onClick={() => editor.chain().focus().undo().run()}
             disabled={!editor.can().undo()}
-            className="h-7 w-7 rounded-md text-zinc-500 hover:text-zinc-200 disabled:opacity-30"
+            className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30"
             title="Undo (Ctrl+Z)"
           >
             <Undo2 className="h-3.5 w-3.5" />
@@ -751,7 +762,7 @@ export function RichTextEditor({
             size="icon"
             onClick={() => editor.chain().focus().redo().run()}
             disabled={!editor.can().redo()}
-            className="h-7 w-7 rounded-md text-zinc-500 hover:text-zinc-200 disabled:opacity-30"
+            className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30 dark:text-zinc-500 dark:hover:text-zinc-200"
             title="Redo (Ctrl+Y)"
           >
             <Redo2 className="h-3.5 w-3.5" />
@@ -759,16 +770,13 @@ export function RichTextEditor({
         </div>
       </div>
 
-      {/* Editor Box - Rounded Dark Container Exactly Matching User Screenshot */}
+      {/* Editor Box */}
       <div
-        className={cn(
-          'relative rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-100 shadow-inner overflow-hidden transition-all duration-200 focus-within:border-zinc-700 focus-within:ring-1 focus-within:ring-zinc-700/50',
-          'dark:bg-[#0c0d0e] dark:border-zinc-800/80'
-        )}
+        className="relative rounded-xl border border-border bg-card text-foreground shadow-sm overflow-hidden transition-all duration-200 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20"
         style={{ minHeight }}
       >
         <EditorContent editor={editor} />
-        
+
         {/* Subtle resize grip corner */}
         <div className="absolute bottom-1.5 right-1.5 pointer-events-none opacity-40">
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -777,12 +785,12 @@ export function RichTextEditor({
         </div>
       </div>
 
-      {/* Footer Info Bar - Matches "964 characters left" exactly */}
-      <div className="flex items-center justify-between text-xs text-zinc-500 px-1 pt-0.5">
+      {/* Footer Info Bar */}
+      <div className="flex items-center justify-between text-xs text-muted-foreground px-1 pt-0.5">
         <div>
           {maxCharacters > 0 ? (
             <span>
-              <span className={cn('font-medium', charsLeft < 50 ? 'text-amber-500' : 'text-zinc-400')}>
+              <span className={cn('font-medium', charsLeft < 50 ? 'text-amber-500' : 'text-foreground')}>
                 {charsLeft}
               </span>{' '}
               characters left
@@ -791,7 +799,7 @@ export function RichTextEditor({
             <span>{charCount} characters</span>
           )}
         </div>
-        <div className="flex items-center gap-3 text-zinc-500 text-[11px]">
+        <div className="flex items-center gap-3 text-[11px]">
           <span>{editor.storage.characterCount.words()} words</span>
           <span>•</span>
           <span>Rich Text Active</span>

@@ -38,7 +38,15 @@ import {
 
 function getNoteTitle(content: string): string {
   if (!content) return 'Untitled';
-  const clean = content.replace(/<[^>]*>/g, ' ').replace(/[#*_`~-]/g, '').trim();
+  const clean = content
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[#*_`~-]/g, '')
+    .trim();
   if (!clean) return 'Untitled';
   return clean.split('\n')[0].trim().slice(0, 80) || 'Untitled';
 }

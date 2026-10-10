@@ -231,7 +231,7 @@ export function NovuNotificationCenter({
           className="w-[380px] sm:w-[420px] p-0 shadow-xl border-border bg-card overflow-hidden rounded-xl"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/50">
             <div className="flex items-center gap-2">
               <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center text-primary">
                 <Bell className="h-3.5 w-3.5" />
@@ -262,11 +262,11 @@ export function NovuNotificationCenter({
           {/* Tabs for Due Alerts vs Novu Cloud Inbox */}
           <Tabs defaultValue="due-alerts" className="w-full">
             <div className="px-4 pt-2 border-b border-border/50">
-              <TabsList className="grid grid-cols-2 h-8 w-full bg-muted/50 p-0.5">
-                <TabsTrigger value="due-alerts" className="text-xs data-[state=active]:bg-background">
+              <TabsList className="grid grid-cols-2 h-8 w-full bg-muted p-0.5 rounded-lg">
+                <TabsTrigger value="due-alerts" className="text-xs h-full rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
                   Due Alerts {alertsCount > 0 && `(${alertsCount})`}
                 </TabsTrigger>
-                <TabsTrigger value="novu-inbox" className="text-xs data-[state=active]:bg-background">
+                <TabsTrigger value="novu-inbox" className="text-xs h-full rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
                   Novu Cloud
                 </TabsTrigger>
               </TabsList>
