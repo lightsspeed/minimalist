@@ -57,7 +57,7 @@ export function NovuNotificationCenter({
     snoozeAlert,
     refreshConfig,
     config,
-  } = useDueTaskAlerts(tasks, userEmail);
+  } = useDueTaskAlerts(tasks, userEmail, userId);
 
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);

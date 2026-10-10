@@ -14,8 +14,9 @@ export interface DueTaskAlert {
   isOverdue: boolean;
 }
 
-export function useDueTaskAlerts(tasks: Task[], userEmail?: string) {
+export function useDueTaskAlerts(tasks: Task[], userEmail?: string, userId?: string) {
   const [config, setConfig] = useState(getNovuConfig());
+  const [currentTime, setCurrentTime] = useState(Date.now());
   const [snoozedTaskIds, setSnoozedTaskIds] = useState<Record<string, number>>(() => {
     try {
       const saved = localStorage.getItem('minimalist_snoozed_alerts');
@@ -25,6 +26,14 @@ export function useDueTaskAlerts(tasks: Task[], userEmail?: string) {
     }
   });
 
+  // Ticker to refresh time-remaining calculations every 30 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Reload config when updated
   const refreshConfig = useCallback(() => {
     setConfig(getNovuConfig());
@@ -32,7 +41,7 @@ export function useDueTaskAlerts(tasks: Task[], userEmail?: string) {
 
   // Compute approaching tasks
   const dueAlerts = useMemo<DueTaskAlert[]>(() => {
-    const now = new Date();
+    const now = new Date(currentTime);
     const nowMs = now.getTime();
     const thresholdMinutes = config.thresholdHours * 60;
 
@@ -87,7 +96,7 @@ export function useDueTaskAlerts(tasks: Task[], userEmail?: string) {
         };
       })
       .sort((a, b) => a.minutesRemaining - b.minutesRemaining);
-  }, [tasks, config.thresholdHours, snoozedTaskIds]);
+  }, [tasks, config.thresholdHours, snoozedTaskIds, currentTime]);
 
   // Handle automatic notifications when new critical/approaching alerts arrive
   useEffect(() => {
@@ -95,7 +104,7 @@ export function useDueTaskAlerts(tasks: Task[], userEmail?: string) {
 
     // Check if any task needs an active notification firing
     const notifiedKey = 'minimalist_notified_task_ids';
-    let notified: Record<string, number> = {};
+    let notified: Record<string, { at: number; dueDate: string | null } | number> = {};
     try {
       notified = JSON.parse(sessionStorage.getItem(notifiedKey) || '{}');
     } catch {
@@ -106,11 +115,15 @@ export function useDueTaskAlerts(tasks: Task[], userEmail?: string) {
     let hasNewAlert = false;
 
     for (const alert of dueAlerts) {
-      // Fire if not notified in the last 30 minutes
-      const lastNotified = notified[alert.task.id] || 0;
-      if (now - lastNotified > 30 * 60 * 1000) {
+      const entry = notified[alert.task.id];
+      const lastNotified = typeof entry === 'number' ? entry : entry?.at || 0;
+      const recordedDueDate = typeof entry === 'object' && entry !== null ? entry.dueDate : null;
+      const dueDateChanged = Boolean(alert.task.due_date && recordedDueDate && alert.task.due_date !== recordedDueDate);
+
+      // Fire if not notified in the last 30 minutes, OR if the task's due date was updated
+      if (dueDateChanged || now - lastNotified > 30 * 60 * 1000) {
         hasNewAlert = true;
-        notified[alert.task.id] = now;
+        notified[alert.task.id] = { at: now, dueDate: alert.task.due_date };
 
         if (config.browserNotificationsEnabled) {
           sendBrowserDueNotification(
@@ -126,7 +139,7 @@ export function useDueTaskAlerts(tasks: Task[], userEmail?: string) {
         // Email notification dispatch
         const recipient = config.targetEmail || userEmail;
         if (config.emailNotificationsEnabled && recipient) {
-          sendEmailDueNotification(alert.task, recipient, alert.timeLabel).then((res) => {
+          sendEmailDueNotification(alert.task, recipient, alert.timeLabel, userId).then((res) => {
             if (res.success) {
               toast.info(`Email dispatched: ${alert.task.title}`, {
                 description: `Sent to ${recipient}`,
@@ -145,7 +158,7 @@ export function useDueTaskAlerts(tasks: Task[], userEmail?: string) {
     if (hasNewAlert) {
       sessionStorage.setItem(notifiedKey, JSON.stringify(notified));
     }
-  }, [dueAlerts, config.browserNotificationsEnabled, config.soundEnabled, config.emailNotificationsEnabled, config.targetEmail, userEmail]);
+  }, [dueAlerts, config.browserNotificationsEnabled, config.soundEnabled, config.emailNotificationsEnabled, config.targetEmail, userEmail, userId]);
 
   // Snooze an alert for N hours
   const snoozeAlert = useCallback((taskId: string, hours: number = 1) => {

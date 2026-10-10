@@ -53,10 +53,43 @@ export function useTasks() {
 
   useEffect(() => {
     fetchTasks();
-    // Depend on user.id only so a new user object with the same ID
-    // (e.g. after a token refresh on tab focus) won't trigger a re-fetch and blink.
+
+    const handleTasksChanged = () => {
+      fetchTasks();
+    };
+
+    window.addEventListener('minimalist:tasks-changed', handleTasksChanged);
+
+    // Supabase Realtime subscription for cross-tab or external changes
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    if (user?.id) {
+      channel = supabase
+        .channel(`user-tasks-${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` },
+          () => {
+            fetchTasks();
+          }
+        )
+        .subscribe();
+    }
+
+    return () => {
+      window.removeEventListener('minimalist:tasks-changed', handleTasksChanged);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+    // Depend on user.id only so a new user object with the same ID won't blink.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  const notifyTasksChanged = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('minimalist:tasks-changed'));
+    }
+  };
 
   const addTask = async (title: string, description: string, tags: string[], dueDate?: Date | null) => {
     if (!user) return { error: new Error('Not authenticated') };
@@ -106,6 +139,7 @@ export function useTasks() {
 
     toast({ title: 'Task added successfully' });
     await fetchTasks();
+    notifyTasksChanged();
     return { error: null };
   };
 
@@ -135,6 +169,7 @@ export function useTasks() {
 
     toast({ title: 'Task created from template' });
     await fetchTasks();
+    notifyTasksChanged();
     return { error: null };
   };
 
@@ -169,6 +204,7 @@ export function useTasks() {
 
     toast({ title: 'Task updated' });
     await fetchTasks();
+    notifyTasksChanged();
     return { error: null };
   };
 
@@ -190,6 +226,7 @@ export function useTasks() {
     
     toast({ title: 'Task completed' });
     await fetchTasks();
+    notifyTasksChanged();
   };
 
   const transferTaskToDate = async (taskId: string, newDate: Date) => {
@@ -209,6 +246,7 @@ export function useTasks() {
 
     toast({ title: 'Task transferred' });
     await fetchTasks();
+    notifyTasksChanged();
     return { error: null };
   };
 
@@ -232,6 +270,7 @@ export function useTasks() {
 
     toast({ title: task.repeat_daily ? 'Daily repeat disabled' : 'Daily repeat enabled' });
     await fetchTasks();
+    notifyTasksChanged();
     return { error: null };
   };
 
@@ -255,6 +294,7 @@ export function useTasks() {
 
     toast({ title: task.is_pinned ? 'Task unpinned' : 'Task pinned' });
     await fetchTasks();
+    notifyTasksChanged();
     return { error: null };
   };
 
@@ -278,6 +318,7 @@ export function useTasks() {
 
     toast({ title: task.is_template ? 'Template removed' : 'Saved as template' });
     await fetchTasks();
+    notifyTasksChanged();
     return { error: null };
   };
 
@@ -338,6 +379,7 @@ export function useTasks() {
         .update({ position: update.position })
         .eq('id', update.id);
     }
+    notifyTasksChanged();
   };
 
   const deleteTask = async (id: string) => {
@@ -357,6 +399,7 @@ export function useTasks() {
 
     toast({ title: 'Task deleted' });
     await fetchTasks();
+    notifyTasksChanged();
     return { error: null };
   };
 

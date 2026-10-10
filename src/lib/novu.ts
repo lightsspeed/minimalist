@@ -115,9 +115,9 @@ export async function sendEmailDueNotification(
     };
   }
 
-  // We use the recipientEmail as the subscriberId to ensure Novu doesn't use a cached email
-  // from a previous test run (e.g., if userId was just 'default-user').
-  const subscriberId = recipientEmail;
+  // Use userId if available so Novu In-App Inbox (which is subscribed to userId)
+  // and Email steps are both delivered to the exact same subscriber.
+  const subscriberId = userId && userId !== 'default-user' ? userId : recipientEmail;
 
   try {
     // In local dev: Vite proxy (/api/n-proxy) bypasses CORS.
