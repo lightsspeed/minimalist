@@ -313,7 +313,7 @@ export default function Notes() {
         ) : (
           <>
             {/* Notes Sidebar List */}
-            <div className="w-full md:w-84 lg:w-88 flex-shrink-0 flex flex-col">
+            <div className="w-full md:w-[320px] lg:w-[340px] md:shrink-0 flex flex-col">
               {/* Header: Title + New Button with matching hierarchy */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -613,7 +613,7 @@ export default function Notes() {
             </div>
 
             {/* Note Editor Area */}
-            <div className="flex-1 flex flex-col min-h-[600px] md:min-h-[calc(100vh-140px)]">
+            <div className="flex-1 min-w-0 flex flex-col min-h-[600px] md:min-h-[calc(100vh-140px)]">
               {selectedNote ? (
                 <div className="flex flex-col h-full">
                   {/* Note Metadata Bar */}
