@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navigate, Link } from 'react-router-dom';
-import { Plus, Trash2, FileText, Share2, FolderOpen, Tag, X, Search, Pin, ExternalLink, PenLine, Code2 } from 'lucide-react';
-import { MarkdownToolbar } from '@/components/MarkdownToolbar';
+import { Plus, Trash2, FileText, Share2, FolderOpen, Tag, X, Search, Pin, ExternalLink } from 'lucide-react';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { NavBar } from '@/components/NavBar';
 import { NoteShareModal } from '@/components/NoteShareModal';
@@ -50,7 +48,6 @@ export default function Notes() {
   const { notes, loading: notesLoading, createNote, updateNote, deleteNote, togglePin } = useNotes();
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [content, setContent] = useState('');
-  const [editorMode, setEditorMode] = useState<'rich' | 'markdown'>('rich');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -432,57 +429,16 @@ export default function Notes() {
                         }}
                       />
                     </div>
-
-                    {/* Editor Mode Switcher */}
-                    <div className="flex items-center gap-1 ml-auto">
-                      <Button
-                        type="button"
-                        variant={editorMode === 'rich' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="h-7 text-xs gap-1"
-                        onClick={() => setEditorMode('rich')}
-                      >
-                        <PenLine className="h-3.5 w-3.5" /> Rich Editor
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={editorMode === 'markdown' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="h-7 text-xs gap-1"
-                        onClick={() => setEditorMode('markdown')}
-                      >
-                        <Code2 className="h-3.5 w-3.5" /> Markdown
-                      </Button>
-                    </div>
                   </div>
 
-                  {editorMode === 'rich' ? (
-                    <div className="flex-1 min-h-[420px] pt-1">
-                      <RichTextEditor
-                        content={content}
-                        onChange={setContent}
-                        placeholder="Type your note here... (Formatted text, headings, lists, images)"
-                        maxCharacters={1000}
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      <MarkdownToolbar 
-                        textareaRef={textareaRef}
-                        content={content}
-                        onContentChange={setContent}
-                      />
-
-                      <Textarea
-                        ref={textareaRef}
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Type your note here... (Markdown supported)"
-                        className="flex-1 min-h-[300px] md:min-h-[calc(100vh-320px)] resize-none border-0 focus-visible:ring-0 text-base leading-relaxed font-mono"
-                      />
-                    </>
-                  )}
+                  <div className="flex-1 min-h-[420px] pt-1">
+                    <RichTextEditor
+                      content={content}
+                      onChange={setContent}
+                      placeholder="Type your note here... (Formatted text, headings, lists, images)"
+                      maxCharacters={1000}
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="h-full flex items-center justify-center text-muted-foreground">
