@@ -313,7 +313,7 @@ export default function Notes() {
         ) : (
           <>
             {/* Notes Sidebar List */}
-            <div className="w-full md:w-80 flex-shrink-0 flex flex-col">
+            <div className="w-full md:w-84 lg:w-88 flex-shrink-0 flex flex-col">
               {/* Header: Title + New Button with matching hierarchy */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -372,26 +372,49 @@ export default function Notes() {
                 </Select>
               </div>
 
-              {/* Bulk Selection Action Bar */}
+              {/* Bulk Selection Action Bar - Structured 2-row layout so nothing ever wraps or overflows */}
               {selectedNoteIds.length > 0 ? (
-                <div className="mb-2.5 p-2 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between gap-1.5 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={allFilteredSelected}
-                      onCheckedChange={handleSelectAll}
-                      id="select-all-filtered"
-                    />
-                    <span className="font-semibold text-primary text-[11px]">
-                      {selectedNoteIds.length} selected
-                    </span>
+                <div className="mb-2.5 p-2.5 rounded-xl bg-card border border-primary/30 shadow-xs space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {/* Top row: Checkbox, count and Clear button */}
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={handleSelectAll}
+                      className="flex items-center gap-2 text-xs font-semibold text-foreground hover:text-primary transition-colors cursor-pointer select-none"
+                    >
+                      <div
+                        className={cn(
+                          'w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
+                          allFilteredSelected
+                            ? 'bg-primary border-primary text-primary-foreground shadow-2xs'
+                            : 'border-muted-foreground/40 bg-background hover:border-primary'
+                        )}
+                      >
+                        {allFilteredSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                      </div>
+                      <span className="whitespace-nowrap font-medium text-xs">
+                        {selectedNoteIds.length} of {filteredNotes.length} selected
+                      </span>
+                    </button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground"
+                      onClick={() => setSelectedNoteIds([])}
+                      title="Clear selection"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
 
-                  <div className="flex items-center gap-1">
+                  {/* Bottom row: Action Buttons in 3 equal columns */}
+                  <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-border/60">
                     {/* Transfer to Folder */}
                     <Select onValueChange={handleBulkTransfer}>
-                      <SelectTrigger className="h-7 px-2 text-[11px] bg-background border-border shadow-2xs gap-1">
-                        <FolderInput className="h-3 w-3 text-muted-foreground" />
-                        <span>Move</span>
+                      <SelectTrigger className="h-7.5 px-2 text-[11px] bg-muted/40 hover:bg-muted/70 border-border rounded-md shadow-2xs gap-1 justify-center">
+                        <FolderInput className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="truncate">Move</span>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">No folder</SelectItem>
@@ -409,16 +432,16 @@ export default function Notes() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 px-2 text-[11px] bg-background border-border shadow-2xs gap-1"
+                          className="h-7.5 px-2 text-[11px] bg-muted/40 hover:bg-muted/70 border-border rounded-md shadow-2xs gap-1 justify-center"
                         >
-                          <Tags className="h-3 w-3 text-muted-foreground" />
-                          <span>Tag</span>
+                          <Tags className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="truncate">Tag</span>
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-56 p-2 bg-card" align="end">
+                      <PopoverContent className="w-56 p-2.5 bg-card border-border shadow-lg" align="center">
                         <div className="space-y-2">
                           <p className="text-xs font-medium">Add tag to {selectedNoteIds.length} notes</p>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             <Input
                               value={bulkTagInput}
                               onChange={(e) => setBulkTagInput(e.target.value)}
@@ -431,8 +454,8 @@ export default function Notes() {
                                 }
                               }}
                             />
-                            <Button size="sm" className="h-7 px-2 text-xs" onClick={handleBulkAddTag}>
-                              <Check className="h-3 w-3" />
+                            <Button size="sm" className="h-7 px-2.5 text-xs shrink-0" onClick={handleBulkAddTag}>
+                              Add
                             </Button>
                           </div>
                         </div>
@@ -443,22 +466,11 @@ export default function Notes() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      className="h-7 px-2 text-[11px] gap-1"
+                      className="h-7.5 px-2 text-[11px] gap-1 justify-center shadow-2xs"
                       onClick={() => setBulkDeleteDialogOpen(true)}
                     >
-                      <Trash2 className="h-3 w-3" />
-                      <span>Delete</span>
-                    </Button>
-
-                    {/* Deselect All */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                      onClick={() => setSelectedNoteIds([])}
-                      title="Clear selection"
-                    >
-                      <X className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3 w-3 shrink-0" />
+                      <span className="truncate">Delete</span>
                     </Button>
                   </div>
                 </div>
@@ -494,16 +506,24 @@ export default function Notes() {
                       onClick={() => handleSelectNote(note)}
                     >
                       <div className="flex items-start gap-2.5">
-                        {/* Checkbox for bulk actions */}
-                        <div
-                          className="pt-0.5"
+                        {/* Sleek custom checkbox */}
+                        <button
+                          type="button"
                           onClick={(e) => toggleSelectNote(note.id, e)}
+                          className="mt-0.5 shrink-0 p-0.5 -ml-1 rounded hover:bg-muted/60 transition-colors focus:outline-none"
+                          title={isChecked ? 'Deselect note' : 'Select note'}
                         >
-                          <Checkbox
-                            checked={isChecked}
-                            className="h-3.5 w-3.5 rounded-sm data-[state=checked]:bg-primary"
-                          />
-                        </div>
+                          <div
+                            className={cn(
+                              'w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
+                              isChecked
+                                ? 'bg-primary border-primary text-primary-foreground shadow-2xs'
+                                : 'border-muted-foreground/35 bg-background/60 hover:border-primary/70'
+                            )}
+                          >
+                            {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
+                          </div>
+                        </button>
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
