@@ -31,5 +31,10 @@ deploy.sh
 .env.test.local
 .env.production.local
 deploy_local.sh
+terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
 
-
+AWSCLIV2.msi
+*.tfstate
+*.tfstate.*
