@@ -103,7 +103,7 @@ export function RichTextEditor({
   placeholder = 'Write your thoughts here...',
   maxCharacters = 1000,
   className,
-  minHeight = '320px',
+  minHeight = '520px',
 }: RichTextEditorProps) {
   const [currentFont, setCurrentFont] = useState('Inter');
   const [currentSize, setCurrentSize] = useState('16px');
@@ -159,7 +159,7 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: cn(
-          'prose dark:prose-invert max-w-none focus:outline-none min-h-[260px] p-4 text-foreground dark:text-zinc-100 font-normal leading-relaxed',
+          'prose dark:prose-invert max-w-none focus:outline-none min-h-[460px] p-5 text-foreground dark:text-zinc-100 font-normal leading-relaxed',
           className
         ),
       },
@@ -772,10 +772,10 @@ export function RichTextEditor({
 
       {/* Editor Box */}
       <div
-        className="relative rounded-xl border border-border bg-card text-foreground shadow-sm overflow-hidden transition-all duration-200 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20"
+        className="relative rounded-xl border border-border bg-card text-foreground shadow-sm overflow-hidden transition-all duration-200 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 flex flex-col"
         style={{ minHeight }}
       >
-        <EditorContent editor={editor} />
+        <EditorContent editor={editor} className="flex-1 flex flex-col [&_.ProseMirror]:flex-1 [&_.ProseMirror]:min-h-[460px]" />
 
         {/* Subtle resize grip corner */}
         <div className="absolute bottom-1.5 right-1.5 pointer-events-none opacity-40">

@@ -30,7 +30,7 @@ export function useNotes() {
     const { data, error } = await supabase
       .from('notes')
       .select('*')
-      .order('updated_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching notes:', error);
@@ -80,7 +80,7 @@ export function useNotes() {
       return { error };
     }
 
-    // Update locally for responsiveness
+    // Update locally for responsiveness without shifting position
     setNotes(prev => prev.map(note => 
       note.id === id ? { ...note, ...updates, updated_at: new Date().toISOString() } : note
     ));
@@ -126,6 +126,68 @@ export function useNotes() {
     return { error: null };
   };
 
+  const bulkDeleteNotes = async (ids: string[]) => {
+    if (!ids.length) return { error: null };
+    const { error } = await supabase
+      .from('notes')
+      .delete()
+      .in('id', ids);
+
+    if (error) {
+      toast({
+        title: 'Error deleting notes',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return { error };
+    }
+
+    toast({ title: `${ids.length} note${ids.length > 1 ? 's' : ''} deleted` });
+    await fetchNotes();
+    return { error: null };
+  };
+
+  const bulkTransferFolder = async (ids: string[], folder: string | null) => {
+    if (!ids.length) return { error: null };
+    const { error } = await supabase
+      .from('notes')
+      .update({ folder })
+      .in('id', ids);
+
+    if (error) {
+      toast({
+        title: 'Error moving notes',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return { error };
+    }
+
+    toast({ title: `Moved ${ids.length} note${ids.length > 1 ? 's' : ''} to ${folder || 'No folder'}` });
+    await fetchNotes();
+    return { error: null };
+  };
+
+  const bulkAddTag = async (ids: string[], tag: string) => {
+    const trimmed = tag.trim();
+    if (!ids.length || !trimmed) return { error: null };
+
+    const notesToUpdate = notes.filter(n => ids.includes(n.id));
+    for (const note of notesToUpdate) {
+      if (!note.tags?.includes(trimmed)) {
+        const newTags = [...(note.tags || []), trimmed];
+        await supabase
+          .from('notes')
+          .update({ tags: newTags })
+          .eq('id', note.id);
+      }
+    }
+
+    toast({ title: `Added #${trimmed} to ${ids.length} note${ids.length > 1 ? 's' : ''}` });
+    await fetchNotes();
+    return { error: null };
+  };
+
   return {
     notes,
     loading,
@@ -133,6 +195,9 @@ export function useNotes() {
     updateNote,
     deleteNote,
     togglePin,
+    bulkDeleteNotes,
+    bulkTransferFolder,
+    bulkAddTag,
     refetch: fetchNotes,
   };
 }
