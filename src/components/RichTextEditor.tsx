@@ -87,14 +87,15 @@ const FONT_SIZES = [
 
 const PALETTE_COLORS = [
   { label: 'Default', value: 'inherit', bg: 'bg-foreground' },
-  { label: 'Slate', value: '#94a3b8', bg: 'bg-slate-400' },
+  { label: 'Orange', value: '#f97316', bg: 'bg-orange-500' },
+  { label: 'Amber', value: '#f59e0b', bg: 'bg-amber-500' },
   { label: 'Blue', value: '#3b82f6', bg: 'bg-blue-500' },
   { label: 'Indigo', value: '#6366f1', bg: 'bg-indigo-500' },
   { label: 'Purple', value: '#a855f7', bg: 'bg-purple-500' },
   { label: 'Rose', value: '#f43f5e', bg: 'bg-rose-500' },
-  { label: 'Amber', value: '#f59e0b', bg: 'bg-amber-500' },
   { label: 'Emerald', value: '#10b981', bg: 'bg-emerald-500' },
   { label: 'Cyan', value: '#06b6d4', bg: 'bg-cyan-500' },
+  { label: 'Slate', value: '#94a3b8', bg: 'bg-slate-400' },
 ];
 
 export function RichTextEditor({
@@ -107,6 +108,7 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const [currentFont, setCurrentFont] = useState('Inter');
   const [currentSize, setCurrentSize] = useState('16px');
+  const [currentColor, setCurrentColor] = useState<string>('inherit');
   const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
   const [sizeDropdownOpen, setSizeDropdownOpen] = useState(false);
   const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
@@ -206,6 +208,7 @@ export function RichTextEditor({
 
   // Set color
   const handleSelectColor = (colorValue: string) => {
+    setCurrentColor(colorValue);
     setColorPopoverOpen(false);
     if (!editor) return;
     if (colorValue === 'inherit') {
@@ -214,6 +217,25 @@ export function RichTextEditor({
       editor.chain().focus().setColor(colorValue).run();
     }
   };
+
+  // Synchronize color mark with active cursor/selection
+  useEffect(() => {
+    if (!editor) return;
+    const updateActiveMarks = () => {
+      const activeColor = editor.getAttributes('textStyle')?.color;
+      if (activeColor) {
+        setCurrentColor(activeColor);
+      } else if (!editor.isActive('textStyle')) {
+        setCurrentColor('inherit');
+      }
+    };
+    editor.on('selectionUpdate', updateActiveMarks);
+    editor.on('transaction', updateActiveMarks);
+    return () => {
+      editor.off('selectionUpdate', updateActiveMarks);
+      editor.off('transaction', updateActiveMarks);
+    };
+  }, [editor]);
 
   // Insert Link
   const handleApplyLink = () => {
@@ -449,24 +471,50 @@ export function RichTextEditor({
               className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted relative group"
               title="Text Color"
             >
-              <span className="h-3.5 w-3.5 rounded-full bg-blue-500 ring-2 ring-border group-hover:ring-primary/40 transition-all" />
+              <span
+                className={cn(
+                  'h-3.5 w-3.5 rounded-full ring-2 ring-border group-hover:ring-primary/40 transition-all flex items-center justify-center',
+                  (!currentColor || currentColor === 'inherit') && 'bg-foreground'
+                )}
+                style={
+                  currentColor && currentColor !== 'inherit'
+                    ? { backgroundColor: currentColor }
+                    : undefined
+                }
+              />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-48 p-2 bg-popover border-border" align="center">
-            <div className="text-[11px] font-medium text-muted-foreground mb-2 px-1">Palette</div>
-            <div className="grid grid-cols-5 gap-1.5">
-              {PALETTE_COLORS.map((col) => (
-                <button
-                  key={col.label}
-                  type="button"
-                  onClick={() => handleSelectColor(col.value)}
-                  title={col.label}
-                  className={cn(
-                    'h-6 w-6 rounded-full flex items-center justify-center transition-transform hover:scale-110 border border-border',
-                    col.bg
-                  )}
-                />
-              ))}
+          <PopoverContent className="w-52 p-2.5 bg-popover border-border shadow-md" align="center">
+            <div className="text-[11px] font-medium text-muted-foreground mb-2 px-1">Text Color</div>
+            <div className="grid grid-cols-5 gap-2">
+              {PALETTE_COLORS.map((col) => {
+                const isSelected =
+                  (col.value === 'inherit' && (!currentColor || currentColor === 'inherit')) ||
+                  currentColor === col.value;
+
+                return (
+                  <button
+                    key={col.label}
+                    type="button"
+                    onClick={() => handleSelectColor(col.value)}
+                    title={col.label}
+                    className={cn(
+                      'h-6 w-6 rounded-full flex items-center justify-center transition-all hover:scale-110 border border-border relative',
+                      col.bg,
+                      isSelected && 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-105'
+                    )}
+                  >
+                    {isSelected && (
+                      <Check
+                        className={cn(
+                          'h-3 w-3',
+                          col.value === 'inherit' ? 'text-background' : 'text-white'
+                        )}
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </PopoverContent>
         </Popover>
