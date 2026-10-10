@@ -1,5 +1,4 @@
 import { Task } from '@/hooks/useTasks';
-import { supabase } from '@/integrations/supabase/client';
 
 export interface NovuConfig {
   applicationIdentifier: string; // Novu App ID (public) — used for Inbox widget
@@ -107,10 +106,16 @@ export async function sendEmailDueNotification(
   const subscriberId = config.subscriberId || userId || recipientEmail;
 
   try {
-    const { data, error } = await supabase.functions.invoke('trigger-novu', {
-      body: {
+    // We use a CORS proxy because Novu's API strictly blocks frontend requests.
+    // This allows us to trigger workflows directly from the browser without a backend.
+    const response = await fetch('https://corsproxy.io/?https://api.novu.co/v1/events/trigger', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `ApiKey ${config.apiKey}`,
+      },
+      body: JSON.stringify({
         name: 'task-due-alert',
-        apiKey: config.apiKey, // Pass key to function to avoid needing secrets setup right now
         to: {
           subscriberId,
           email: recipientEmail,
@@ -132,14 +137,21 @@ export async function sendEmailDueNotification(
             ? 'CRITICAL'
             : 'UPCOMING',
         },
-      },
+      }),
     });
 
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
+    if (response.ok) {
+      logEmailDispatch({ taskId: task.id, taskTitle: task.title, email: recipientEmail, timeLabel });
+      return { success: true, message: `Novu alert sent to ${recipientEmail} for "${task.title}"` };
+    }
 
-    logEmailDispatch({ taskId: task.id, taskTitle: task.title, email: recipientEmail, timeLabel });
-    return { success: true, message: `Novu alert sent to ${recipientEmail} for "${task.title}"` };
+    let errMsg = `Novu API error ${response.status}`;
+    try {
+      const errData = await response.json();
+      errMsg = errData.message || errMsg;
+    } catch { /* ignore */ }
+
+    return { success: false, message: errMsg };
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
