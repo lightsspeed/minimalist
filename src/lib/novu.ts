@@ -106,9 +106,9 @@ export async function sendEmailDueNotification(
   const subscriberId = config.subscriberId || userId || recipientEmail;
 
   try {
-    // We use a CORS proxy because Novu's API strictly blocks frontend requests.
-    // This allows us to trigger workflows directly from the browser without a backend.
-    const response = await fetch('https://corsproxy.io/?https://api.novu.co/v1/events/trigger', {
+    // We use Vite's local proxy (/api/novu) configured in vite.config.ts
+    // to bypass CORS when calling Novu's API directly from the frontend.
+    const response = await fetch('/api/novu/events/trigger', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

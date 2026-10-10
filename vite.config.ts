@@ -8,6 +8,13 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      '/api/novu': {
+        target: 'https://api.novu.co',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/novu/, '/v1')
+      }
+    }
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
