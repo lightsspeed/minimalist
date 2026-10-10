@@ -45,8 +45,10 @@ import { Task } from '@/hooks/useTasks';
 import {
   getNovuConfig,
   saveNovuConfig,
+  isEmailJsConfigured,
   requestBrowserNotificationPermission,
   sendBrowserDueNotification,
+  sendEmailDueNotification,
   playDueAlertSound,
 } from '@/lib/novu';
 import { toast } from 'sonner';
@@ -57,9 +59,9 @@ import {
   Mail,
   Send,
   Info,
+  Key,
 } from 'lucide-react';
 import { APP_VERSION, APP_VERSION_INFO } from '@/lib/version';
-import { sendEmailDueNotification } from '@/lib/novu';
 
 interface NovuNotificationCenterProps {
   tasks: Task[];
@@ -95,6 +97,10 @@ export function NovuNotificationCenter({
   const [soundEnabled, setSoundEnabled] = useState(config.soundEnabled);
   const [emailNotifs, setEmailNotifs] = useState(config.emailNotificationsEnabled);
   const [targetEmail, setTargetEmail] = useState(config.targetEmail || userEmail || '');
+  const [ejsServiceId, setEjsServiceId] = useState(config.emailjsServiceId || '');
+  const [ejsTemplateId, setEjsTemplateId] = useState(config.emailjsTemplateId || '');
+  const [ejsPublicKey, setEjsPublicKey] = useState(config.emailjsPublicKey || '');
+  const emailConfigured = isEmailJsConfigured();
 
   // Keep targetEmail synchronized if userEmail loads
   useEffect(() => {
@@ -103,7 +109,7 @@ export function NovuNotificationCenter({
     }
   }, [userEmail, targetEmail]);
 
-  // Handle saving Novu settings
+  // Handle saving settings
   const handleSaveSettings = () => {
     saveNovuConfig({
       applicationIdentifier: appIdInput.trim(),
@@ -113,6 +119,9 @@ export function NovuNotificationCenter({
       soundEnabled: soundEnabled,
       emailNotificationsEnabled: emailNotifs,
       targetEmail: targetEmail.trim(),
+      emailjsServiceId: ejsServiceId.trim(),
+      emailjsTemplateId: ejsTemplateId.trim(),
+      emailjsPublicKey: ejsPublicKey.trim(),
     });
     refreshConfig();
     setSettingsOpen(false);
@@ -579,59 +588,99 @@ export function NovuNotificationCenter({
                   <Label className="text-xs font-medium cursor-pointer flex items-center gap-1.5">
                     <Mail className="h-3.5 w-3.5 text-primary" />
                     <span>Email Notifications</span>
+                    {emailConfigured && (
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
+                        ✓ Ready
+                      </span>
+                    )}
                   </Label>
                   <p className="text-[11px] text-muted-foreground">
-                    Receive email alerts when tasks approach due date
+                    Real email alerts via EmailJS — no backend needed
                   </p>
                 </div>
                 <Switch checked={emailNotifs} onCheckedChange={setEmailNotifs} />
               </div>
 
               {emailNotifs && (
-                <div className="pt-2 border-t border-border/40 space-y-2">
-                  <Label htmlFor="targetEmail" className="text-[11px] text-muted-foreground">
-                    Recipient Email Address
-                  </Label>
-                  <div className="flex gap-1.5">
-                    <Input
-                      id="targetEmail"
-                      placeholder="you@example.com"
-                      value={targetEmail}
-                      onChange={(e) => setTargetEmail(e.target.value)}
-                      className="h-8 text-xs font-mono"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs gap-1 shrink-0"
-                      onClick={handleTestEmail}
-                      title="Send test email alert"
-                    >
-                      <Send className="h-3 w-3" /> Test Email
-                    </Button>
+                <div className="pt-2 border-t border-border/40 space-y-2.5">
+                  {/* Recipient */}
+                  <div className="space-y-1">
+                    <Label htmlFor="targetEmail" className="text-[11px] text-muted-foreground">
+                      Recipient Email
+                    </Label>
+                    <div className="flex gap-1.5">
+                      <Input
+                        id="targetEmail"
+                        placeholder="ajgd@rocketmail.com"
+                        value={targetEmail}
+                        onChange={(e) => setTargetEmail(e.target.value)}
+                        className="h-8 text-xs font-mono"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs gap-1 shrink-0"
+                        onClick={handleTestEmail}
+                        disabled={!emailConfigured}
+                        title={emailConfigured ? 'Send test email' : 'Configure EmailJS first'}
+                      >
+                        <Send className="h-3 w-3" /> Test
+                      </Button>
+                    </div>
                   </div>
 
-                  {/* Resend setup instructions */}
-                  <div className="p-2.5 rounded-md bg-blue-500/5 border border-blue-500/20 text-[11px] space-y-1.5">
-                    <div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                      <Info className="h-3 w-3" /> Setup required to deliver real emails
-                    </div>
-                    <ol className="text-muted-foreground space-y-1 pl-3 list-decimal">
-                      <li>Create a free account at{' '}
-                        <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">resend.com</a>
-                      </li>
-                      <li>Copy your <strong>API Key</strong> from the Resend dashboard</li>
-                      <li>Go to your{' '}
-                        <a href="https://supabase.com/dashboard/project/qsuighkvqbvotufneksl/settings/functions" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">Supabase Secrets</a>
-                      </li>
-                      <li>Add secret: <code className="bg-muted px-1 py-0.5 rounded font-mono text-[10px]">RESEND_API_KEY = re_...</code></li>
-                      <li>Deploy: <code className="bg-muted px-1 py-0.5 rounded font-mono text-[10px]">supabase functions deploy send-email</code></li>
-                    </ol>
-                    <p className="text-[10px] text-muted-foreground/70">
-                      Free tier: 3,000 emails/month · No domain required for testing
-                    </p>
+                  {/* EmailJS credentials */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <Key className="h-3 w-3" /> EmailJS Credentials
+                    </Label>
+                    <Input
+                      placeholder="Service ID  (e.g. service_xxxxxx)"
+                      value={ejsServiceId}
+                      onChange={(e) => setEjsServiceId(e.target.value)}
+                      className="h-8 text-xs font-mono"
+                    />
+                    <Input
+                      placeholder="Template ID  (e.g. template_xxxxxx)"
+                      value={ejsTemplateId}
+                      onChange={(e) => setEjsTemplateId(e.target.value)}
+                      className="h-8 text-xs font-mono"
+                    />
+                    <Input
+                      placeholder="Public Key  (e.g. aBcDeFgHiJkL_xxxxx)"
+                      value={ejsPublicKey}
+                      onChange={(e) => setEjsPublicKey(e.target.value)}
+                      className="h-8 text-xs font-mono"
+                    />
                   </div>
+
+                  {/* Setup guide shown only when not yet configured */}
+                  {!emailConfigured && (
+                    <div className="p-2.5 rounded-md bg-blue-500/5 border border-blue-500/20 text-[11px] space-y-1.5">
+                      <div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                        <Info className="h-3 w-3" /> Quick setup — free, no backend required
+                      </div>
+                      <ol className="text-muted-foreground space-y-1 pl-3.5 list-decimal">
+                        <li>
+                          Sign up at{' '}
+                          <a href="https://emailjs.com" target="_blank" rel="noopener noreferrer"
+                            className="text-primary underline underline-offset-2">emailjs.com</a>
+                        </li>
+                        <li>Add an <strong>Email Service</strong> (Gmail / Yahoo / Outlook)</li>
+                        <li>
+                          Create an <strong>Email Template</strong> with variables:<br />
+                          <code className="bg-muted px-1 rounded text-[10px] break-all">
+                            {'{{to_email}}, {{task_title}}, {{time_label}}, {{due_date}}, {{app_url}}'}
+                          </code>
+                        </li>
+                        <li>Paste Service ID, Template ID &amp; Public Key above, then Save</li>
+                      </ol>
+                      <p className="text-[10px] text-muted-foreground/60 pt-0.5">
+                        Free tier: 200 emails/month · Works with Gmail &amp; Yahoo · No domain needed
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

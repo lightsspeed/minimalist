@@ -1,22 +1,25 @@
 /**
- * Novu notification client configuration and utilities
- * Reference: https://github.com/novuhq/novu
+ * Notification utilities for Minimalist
+ * Email delivery: EmailJS (browser-native, no backend needed)
+ * Reference: https://www.emailjs.com/docs/
  */
 
 import { Task } from '@/hooks/useTasks';
-
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) || '';
-const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) || '';
+import emailjs from '@emailjs/browser';
 
 export interface NovuConfig {
   applicationIdentifier: string;
   apiKey?: string;
   workflowId: string;
-  thresholdHours: number; // e.g. 24 hours before due date
+  thresholdHours: number;
   browserNotificationsEnabled: boolean;
   soundEnabled: boolean;
   emailNotificationsEnabled: boolean;
   targetEmail: string;
+  // EmailJS credentials (no backend needed)
+  emailjsServiceId: string;
+  emailjsTemplateId: string;
+  emailjsPublicKey: string;
 }
 
 const STORAGE_KEY = 'minimalist_novu_config';
@@ -25,11 +28,14 @@ export const DEFAULT_NOVU_CONFIG: NovuConfig = {
   applicationIdentifier: (import.meta.env.VITE_NOVU_APP_IDENTIFIER as string) || '',
   apiKey: (import.meta.env.VITE_NOVU_API_KEY as string) || '',
   workflowId: 'task-due-alert',
-  thresholdHours: 24, // Trigger alerts for tasks due within 24 hours
+  thresholdHours: 24,
   browserNotificationsEnabled: true,
   soundEnabled: true,
   emailNotificationsEnabled: true,
   targetEmail: '',
+  emailjsServiceId: '',
+  emailjsTemplateId: '',
+  emailjsPublicKey: '',
 };
 
 export function getNovuConfig(): NovuConfig {
@@ -39,7 +45,7 @@ export function getNovuConfig(): NovuConfig {
       return { ...DEFAULT_NOVU_CONFIG, ...JSON.parse(saved) };
     }
   } catch (e) {
-    console.error('Failed to read Novu config from localStorage:', e);
+    console.error('Failed to read config from localStorage:', e);
   }
   return DEFAULT_NOVU_CONFIG;
 }
@@ -50,32 +56,33 @@ export function saveNovuConfig(config: Partial<NovuConfig>): NovuConfig {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   } catch (e) {
-    console.error('Failed to save Novu config:', e);
+    console.error('Failed to save config:', e);
   }
   return updated;
+}
+
+/**
+ * Returns true if EmailJS is fully configured
+ */
+export function isEmailJsConfigured(): boolean {
+  const c = getNovuConfig();
+  return !!(c.emailjsServiceId && c.emailjsTemplateId && c.emailjsPublicKey);
 }
 
 /**
  * Request permission for Desktop Web Notifications
  */
 export async function requestBrowserNotificationPermission(): Promise<NotificationPermission> {
-  if (!('Notification' in window)) {
-    return 'denied';
-  }
-  if (Notification.permission === 'granted') {
-    return 'granted';
-  }
+  if (!('Notification' in window)) return 'denied';
+  if (Notification.permission === 'granted') return 'granted';
   return await Notification.requestPermission();
 }
 
 /**
- * Trigger an In-Browser Desktop Notification
+ * Trigger an in-browser desktop notification
  */
 export function sendBrowserDueNotification(title: string, body: string, onClick?: () => void) {
-  if (!('Notification' in window) || Notification.permission !== 'granted') {
-    return;
-  }
-
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
   try {
     const notification = new Notification(title, {
       body,
@@ -83,7 +90,6 @@ export function sendBrowserDueNotification(title: string, body: string, onClick?
       badge: '/favicon.png',
       silent: false,
     });
-
     if (onClick) {
       notification.onclick = () => {
         window.focus();
@@ -97,10 +103,14 @@ export function sendBrowserDueNotification(title: string, body: string, onClick?
 }
 
 /**
- * Send an Email Due Notification
- * Primary path: Supabase Edge Function (send-email) via Resend
- * Secondary path: Novu Cloud API (if apiKey configured)
- * Fallback: log to localStorage with a clear "not sent" notice
+ * Send an email due-date alert via EmailJS (pure browser, no backend)
+ *
+ * Setup:
+ *  1. Create a free account at https://emailjs.com
+ *  2. Add an Email Service (Gmail, Outlook, etc.)
+ *  3. Create an Email Template with variables:
+ *       {{to_email}}, {{task_title}}, {{time_label}}, {{due_date}}, {{app_url}}
+ *  4. Paste Service ID, Template ID, Public Key into Notification Settings
  */
 export async function sendEmailDueNotification(
   task: Task,
@@ -113,61 +123,75 @@ export async function sendEmailDueNotification(
 
   const config = getNovuConfig();
 
-  // --- Path 1: Supabase Edge Function (Resend) ---
-  if (SUPABASE_URL) {
+  // --- Path 1: EmailJS (no backend needed) ---
+  if (config.emailjsServiceId && config.emailjsTemplateId && config.emailjsPublicKey) {
     try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          to: recipientEmail,
-          taskTitle: task.title,
-          taskDescription: task.description || '',
-          dueDate: task.due_date,
-          timeLabel,
-          appUrl: window.location.origin,
-        }),
-      });
+      const dueDateStr = task.due_date
+        ? new Date(task.due_date).toLocaleString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : 'Not set';
 
-      const data = await response.json();
+      const templateParams = {
+        to_email: recipientEmail,
+        to_name: recipientEmail.split('@')[0],
+        task_title: task.title,
+        task_description: task.description || 'No description',
+        time_label: timeLabel,
+        due_date: dueDateStr,
+        app_url: window.location.origin,
+        urgency: timeLabel.toLowerCase().includes('overdue')
+          ? 'OVERDUE'
+          : timeLabel.toLowerCase().includes('minute')
+          ? 'CRITICAL'
+          : 'UPCOMING',
+      };
 
-      if (response.ok && data.success) {
+      const result = await emailjs.send(
+        config.emailjsServiceId,
+        config.emailjsTemplateId,
+        templateParams,
+        { publicKey: config.emailjsPublicKey }
+      );
+
+      if (result.status === 200) {
         logEmailDispatchEvent({
           taskId: task.id,
           taskTitle: task.title,
           email: recipientEmail,
           timeLabel,
           sentAt: new Date().toISOString(),
-          provider: 'resend',
+          provider: 'emailjs',
         });
         return {
           success: true,
           realEmailSent: true,
-          message: `Email sent to ${recipientEmail} via Resend`,
+          message: `Email delivered to ${recipientEmail} via EmailJS`,
         };
       }
 
-      // If RESEND_API_KEY not configured in Supabase, fall through
-      if (data.error && data.error.includes('RESEND_API_KEY')) {
-        console.warn('Resend not configured:', data.error);
-        // fall through to Novu or local log
-      } else {
-        return {
-          success: false,
-          realEmailSent: false,
-          message: data.error || 'Email delivery failed',
-        };
-      }
-    } catch (err) {
-      console.warn('send-email edge function unavailable:', err);
+      return {
+        success: false,
+        realEmailSent: false,
+        message: `EmailJS returned status ${result.status}`,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('EmailJS send error:', err);
+      return {
+        success: false,
+        realEmailSent: false,
+        message: `EmailJS error: ${msg}`,
+      };
     }
   }
 
-  // --- Path 2: Novu Cloud API (optional, if apiKey configured) ---
+  // --- Path 2: Novu Cloud API (if API key configured) ---
   if (config.apiKey) {
     try {
       const response = await fetch('https://api.novu.co/v1/events/trigger', {
@@ -178,10 +202,7 @@ export async function sendEmailDueNotification(
         },
         body: JSON.stringify({
           name: config.workflowId || 'task-due-alert',
-          to: {
-            subscriberId: task.user_id || 'user',
-            email: recipientEmail,
-          },
+          to: { subscriberId: task.user_id || 'user', email: recipientEmail },
           payload: {
             taskTitle: task.title,
             taskDescription: task.description || '',
@@ -204,7 +225,7 @@ export async function sendEmailDueNotification(
         return {
           success: true,
           realEmailSent: true,
-          message: `Novu email dispatched to ${recipientEmail} for "${task.title}"`,
+          message: `Novu email dispatched to ${recipientEmail}`,
         };
       }
     } catch (err) {
@@ -212,16 +233,16 @@ export async function sendEmailDueNotification(
     }
   }
 
-  // --- Fallback: no real email backend configured ---
+  // --- Not configured ---
   return {
     success: false,
     realEmailSent: false,
-    message: 'Email not sent: RESEND_API_KEY not set in Supabase secrets. See setup instructions.',
+    message: 'EmailJS not configured. Open Notification Settings → Email to set it up.',
   };
 }
 
 /**
- * Log email dispatch history in localStorage
+ * Log email dispatch history in localStorage (audit trail)
  */
 function logEmailDispatchEvent(event: {
   taskId: string;
@@ -242,11 +263,12 @@ function logEmailDispatchEvent(event: {
 }
 
 /**
- * Play a gentle alert sound for due task notifications
+ * Play a gentle alert chime for due task notifications
  */
 export function playDueAlertSound() {
   try {
-    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const ctx = new (window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
@@ -259,6 +281,6 @@ export function playDueAlertSound() {
     osc.start();
     osc.stop(ctx.currentTime + 0.3);
   } catch {
-    // Ignore audio context error if browser blocks autoplay
+    // Ignore audio context errors
   }
 }
