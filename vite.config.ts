@@ -9,10 +9,10 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
     proxy: {
-      '/api/novu': {
+      '/api/n-proxy': {
         target: 'https://api.novu.co',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/novu/, '/v1')
+        rewrite: () => '/v1/events/trigger'
       }
     }
   },

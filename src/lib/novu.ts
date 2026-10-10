@@ -106,9 +106,9 @@ export async function sendEmailDueNotification(
   const subscriberId = config.subscriberId || userId || recipientEmail;
 
   try {
-    // We use Vite's local proxy (/api/novu) configured in vite.config.ts
-    // to bypass CORS when calling Novu's API directly from the frontend.
-    const response = await fetch('/api/novu/events/trigger', {
+    // We use Vite's local proxy (/api/n-proxy) configured in vite.config.ts
+    // to bypass CORS and Adblockers when calling Novu's API directly from the frontend.
+    const response = await fetch('/api/n-proxy', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
