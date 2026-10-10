@@ -103,7 +103,9 @@ export async function sendEmailDueNotification(
     };
   }
 
-  const subscriberId = config.subscriberId || userId || recipientEmail;
+  // We use the recipientEmail as the subscriberId to ensure Novu doesn't use a cached email
+  // from a previous test run (e.g., if userId was just 'default-user').
+  const subscriberId = recipientEmail;
 
   try {
     // We use Vite's local proxy (/api/n-proxy) configured in vite.config.ts
