@@ -1,31 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Bell,
-  Clock,
-  AlertTriangle,
-  CheckCircle2,
-  Settings,
-  ExternalLink,
-  Volume2,
-  VolumeX,
-  Radio,
-  Sparkles,
-  ArrowRight,
-  ShieldCheck,
-  Zap,
+  Bell, Clock, CheckCircle2, Settings, ExternalLink,
+  Radio, Sparkles, ShieldCheck, Zap, Mail, Send, Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -34,18 +15,14 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useDueTaskAlerts, DueTaskAlert } from '@/hooks/useDueTaskAlerts';
 import { Task } from '@/hooks/useTasks';
 import {
   getNovuConfig,
   saveNovuConfig,
-  isEmailJsConfigured,
+  isNovuConfigured,
   requestBrowserNotificationPermission,
   sendBrowserDueNotification,
   sendEmailDueNotification,
@@ -54,14 +31,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Inbox } from '@novu/react';
-
-import {
-  Mail,
-  Send,
-  Info,
-  Key,
-} from 'lucide-react';
-import { APP_VERSION, APP_VERSION_INFO } from '@/lib/version';
+import { APP_VERSION_INFO } from '@/lib/version';
 
 interface NovuNotificationCenterProps {
   tasks: Task[];
@@ -90,6 +60,8 @@ export function NovuNotificationCenter({
 
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Settings form state
   const [appIdInput, setAppIdInput] = useState(config.applicationIdentifier);
   const [apiKeyInput, setApiKeyInput] = useState(config.apiKey || '');
   const [thresholdHours, setThresholdHours] = useState(String(config.thresholdHours));
@@ -97,49 +69,48 @@ export function NovuNotificationCenter({
   const [soundEnabled, setSoundEnabled] = useState(config.soundEnabled);
   const [emailNotifs, setEmailNotifs] = useState(config.emailNotificationsEnabled);
   const [targetEmail, setTargetEmail] = useState(config.targetEmail || userEmail || '');
-  const [ejsServiceId, setEjsServiceId] = useState(config.emailjsServiceId || '');
-  const [ejsTemplateId, setEjsTemplateId] = useState(config.emailjsTemplateId || '');
-  const [ejsPublicKey, setEjsPublicKey] = useState(config.emailjsPublicKey || '');
-  const emailConfigured = isEmailJsConfigured();
 
-  // Keep targetEmail synchronized if userEmail loads
+  const novuConfigured = isNovuConfigured();
+
+  // Sync email from user session
   useEffect(() => {
-    if (!targetEmail && userEmail) {
-      setTargetEmail(userEmail);
-    }
+    if (!targetEmail && userEmail) setTargetEmail(userEmail);
   }, [userEmail, targetEmail]);
 
-  // Handle saving settings
+  // Save settings
   const handleSaveSettings = () => {
     saveNovuConfig({
       applicationIdentifier: appIdInput.trim(),
       apiKey: apiKeyInput.trim(),
       thresholdHours: Number(thresholdHours) || 24,
       browserNotificationsEnabled: browserNotifs,
-      soundEnabled: soundEnabled,
+      soundEnabled,
       emailNotificationsEnabled: emailNotifs,
       targetEmail: targetEmail.trim(),
-      emailjsServiceId: ejsServiceId.trim(),
-      emailjsTemplateId: ejsTemplateId.trim(),
-      emailjsPublicKey: ejsPublicKey.trim(),
     });
     refreshConfig();
     setSettingsOpen(false);
     toast.success('Notification settings saved');
   };
 
-  // Test email notification trigger
+  // Test Novu email trigger
   const handleTestEmail = async () => {
     const dest = targetEmail.trim() || userEmail;
     if (!dest) {
-      toast.error('Please enter an email address first');
+      toast.error('Enter a recipient email first');
+      return;
+    }
+    if (!novuConfigured) {
+      toast.error('Novu not configured', {
+        description: 'Add your Novu App ID and API Key in settings first.',
+      });
       return;
     }
     const mockTask: Task = {
       id: 'test-task',
       title: 'Complete Project Architecture Review',
-      description: 'Prepare diagrams and verify email workflows.',
-      tags: ['high-priority', 'dev'],
+      description: 'Verify Novu email workflow is working correctly.',
+      tags: ['high-priority'],
       due_date: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
       is_completed: false,
       is_pinned: false,
@@ -151,26 +122,24 @@ export function NovuNotificationCenter({
       user_id: userId,
       repeat_daily: false,
     };
-    toast.loading('Sending test email...', { id: 'email-test' });
-    const res = await sendEmailDueNotification(mockTask, dest, 'Due in 45 minutes');
-    if (res.success && res.realEmailSent) {
-      toast.success(`✅ Email delivered to ${dest}!`, {
-        id: 'email-test',
-        description: res.message,
+    toast.loading('Triggering Novu workflow…', { id: 'novu-test' });
+    const res = await sendEmailDueNotification(mockTask, dest, 'Due in 45 minutes', userId);
+    if (res.success) {
+      toast.success(`Novu workflow triggered!`, {
+        id: 'novu-test',
+        description: `Email dispatched to ${dest}`,
         duration: 6000,
       });
-    } else if (!res.success) {
-      toast.error('Email not delivered', {
-        id: 'email-test',
+    } else {
+      toast.error('Novu trigger failed', {
+        id: 'novu-test',
         description: res.message,
         duration: 8000,
       });
-    } else {
-      toast.info('Email queued', { id: 'email-test', description: res.message });
     }
   };
 
-  // Test notification trigger
+  // Test in-app + browser alert
   const handleTestAlert = async () => {
     if (browserNotifs) {
       const perm = await requestBrowserNotificationPermission();
@@ -181,12 +150,8 @@ export function NovuNotificationCenter({
         );
       }
     }
-    if (soundEnabled) {
-      playDueAlertSound();
-    }
-    toast.info('Test alert triggered: Task nearing due date', {
-      description: 'Triggered via Novu Notification Engine',
-    });
+    if (soundEnabled) playDueAlertSound();
+    toast.info('Test alert triggered', { description: 'Novu Notification Engine active' });
   };
 
   const getUrgencyBadge = (urgency: DueTaskAlert['urgency']) => {
@@ -220,6 +185,7 @@ export function NovuNotificationCenter({
 
   return (
     <>
+      {/* Bell Button */}
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -261,39 +227,40 @@ export function NovuNotificationCenter({
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  setPopoverOpen(false);
-                  setSettingsOpen(true);
-                }}
-                title="Novu & Notification Settings"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={() => { setPopoverOpen(false); setSettingsOpen(true); }}
+              title="Notification Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
           </div>
 
-          {/* Tabs for Due Alerts vs Novu Cloud Inbox */}
+          {/* Tabs */}
           <Tabs defaultValue="due-alerts" className="w-full">
             <div className="px-4 pt-2 border-b border-border/50">
               <TabsList className="grid grid-cols-2 h-8 w-full bg-muted p-0.5 rounded-lg">
-                <TabsTrigger value="due-alerts" className="text-xs h-full rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger
+                  value="due-alerts"
+                  className="text-xs h-full rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                >
                   Due Alerts {alertsCount > 0 && `(${alertsCount})`}
                 </TabsTrigger>
-                <TabsTrigger value="novu-inbox" className="text-xs h-full rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger
+                  value="novu-inbox"
+                  className="text-xs h-full rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                >
                   Novu Cloud
                 </TabsTrigger>
               </TabsList>
             </div>
 
-            {/* Tab 1: Impending Due Tasks */}
+            {/* Tab 1: Due Alerts */}
             <TabsContent value="due-alerts" className="m-0 p-0">
               <div className="p-2 border-b border-border/40 bg-muted/10 text-[11px] text-muted-foreground flex items-center justify-between px-4">
-                <span>Alerts triggered within {config.thresholdHours}h of due date</span>
+                <span>Alerts within {config.thresholdHours}h of due date</span>
                 <span className="flex items-center gap-1 text-[10px] text-primary">
                   <Radio className="h-2.5 w-2.5 animate-pulse text-emerald-500" /> Active Monitor
                 </span>
@@ -307,7 +274,7 @@ export function NovuNotificationCenter({
                     </div>
                     <p className="text-sm font-medium">All caught up!</p>
                     <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                      No tasks are nearing their due dates within the next {config.thresholdHours} hours.
+                      No tasks nearing due dates within the next {config.thresholdHours} hours.
                     </p>
                   </div>
                 ) : (
@@ -331,10 +298,7 @@ export function NovuNotificationCenter({
                               </span>
                             </div>
                             <h4
-                              onClick={() => {
-                                onSelectTask?.(alert.task);
-                                setPopoverOpen(false);
-                              }}
+                              onClick={() => { onSelectTask?.(alert.task); setPopoverOpen(false); }}
                               className="text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer mt-1 truncate"
                             >
                               {alert.task.title}
@@ -342,10 +306,7 @@ export function NovuNotificationCenter({
                             {alert.task.tags && alert.task.tags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {alert.task.tags.slice(0, 2).map((t) => (
-                                  <span
-                                    key={t}
-                                    className="text-[10px] px-1.5 py-0.2 rounded bg-muted text-muted-foreground"
-                                  >
+                                  <span key={t} className="text-[10px] px-1.5 rounded bg-muted text-muted-foreground">
                                     #{t}
                                   </span>
                                 ))}
@@ -353,8 +314,6 @@ export function NovuNotificationCenter({
                             )}
                           </div>
                         </div>
-
-                        {/* Actions */}
                         <div className="flex items-center justify-between pt-1 text-xs">
                           <div className="flex items-center gap-1.5">
                             <Button
@@ -382,10 +341,7 @@ export function NovuNotificationCenter({
                             </Button>
                           </div>
                           <span className="text-[11px] text-muted-foreground">
-                            {new Date(alert.task.due_date!).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                            {new Date(alert.task.due_date!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                       </div>
@@ -412,7 +368,6 @@ export function NovuNotificationCenter({
                       Dashboard <ExternalLink className="h-2.5 w-2.5" />
                     </a>
                   </div>
-                  {/* Novu Official Inbox Widget */}
                   <div className="rounded-lg overflow-hidden border border-border min-h-[220px]">
                     <Inbox
                       applicationIdentifier={config.applicationIdentifier}
@@ -426,50 +381,34 @@ export function NovuNotificationCenter({
                     <Zap className="h-6 w-6" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-sm">Novu Notifications</h4>
+                    <h4 className="font-semibold text-sm">Novu Cloud Inbox</h4>
                     <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
-                      Powered by Novu's open-source notification infrastructure. Connect your Novu App ID for multi-channel & cloud notifications.
+                      Connect your Novu App ID to see in-app and multi-channel cloud notifications here.
                     </p>
                   </div>
-
                   <div className="p-3 bg-muted/40 rounded-lg text-left text-xs space-y-1.5 border border-border/60">
                     <div className="flex items-center gap-1.5 font-medium text-foreground">
-                      <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Active Local Due-Monitor
+                      <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Local Due-Monitor Active
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Tasks nearing due dates trigger native in-app alerts and desktop browser push immediately.
+                      Tasks nearing due dates already trigger in-app alerts and browser push notifications.
                     </p>
                   </div>
-
-                  <div className="flex items-center justify-center gap-2 pt-1">
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setPopoverOpen(false);
-                        setSettingsOpen(true);
-                      }}
-                      className="h-8 text-xs gap-1.5"
-                    >
-                      <Settings className="h-3.5 w-3.5" /> Configure Novu ID
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleTestAlert}
-                      className="h-8 text-xs"
-                    >
-                      Test Alert
-                    </Button>
-                  </div>
-
-                  <div className="pt-2">
+                  <Button
+                    size="sm"
+                    onClick={() => { setPopoverOpen(false); setSettingsOpen(true); }}
+                    className="h-8 text-xs gap-1.5"
+                  >
+                    <Settings className="h-3.5 w-3.5" /> Configure Novu
+                  </Button>
+                  <div className="pt-1">
                     <a
                       href="https://github.com/novuhq/novu"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
                     >
-                      Explore Novu on GitHub <ExternalLink className="h-2.5 w-2.5" />
+                      Novu on GitHub <ExternalLink className="h-2.5 w-2.5" />
                     </a>
                   </div>
                 </div>
@@ -479,7 +418,7 @@ export function NovuNotificationCenter({
         </PopoverContent>
       </Popover>
 
-      {/* Novu Settings Dialog */}
+      {/* Settings Dialog */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="max-w-md bg-card">
           <DialogHeader>
@@ -487,44 +426,71 @@ export function NovuNotificationCenter({
               <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                 <Settings className="h-4 w-4" />
               </div>
-              <DialogTitle>Notification & Novu Settings</DialogTitle>
+              <DialogTitle>Notification Settings</DialogTitle>
             </div>
             <DialogDescription>
-              Configure due date notification thresholds and connect your Novu account.
+              Connect Novu for cloud inbox + email alerts. Local due-date monitoring works without it.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* Novu Application Identifier */}
-            <div className="space-y-1.5">
-              <Label htmlFor="appId" className="text-xs font-medium flex items-center justify-between">
-                <span>Novu Application Identifier</span>
-                <a
-                  href="https://github.com/novuhq/novu"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-primary hover:underline flex items-center gap-1"
-                >
-                  Novu Docs <ExternalLink className="h-2.5 w-2.5" />
-                </a>
-              </Label>
-              <Input
-                id="appId"
-                placeholder="e.g. YOUR_NOVU_APP_IDENTIFIER"
-                value={appIdInput}
-                onChange={(e) => setAppIdInput(e.target.value)}
-                className="h-9 text-xs font-mono"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Found in your Novu Dashboard settings. If empty, local notifications continue seamlessly.
-              </p>
+
+            {/* ── Novu Credentials ── */}
+            <div className="space-y-2 p-3 rounded-lg border border-border/60 bg-muted/20">
+              <div className="flex items-center justify-between mb-0.5">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 text-primary" /> Novu Connection
+                </Label>
+                {novuConfigured ? (
+                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
+                    ✓ Connected
+                  </span>
+                ) : (
+                  <a
+                    href="https://dashboard.novu.co"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-primary hover:underline flex items-center gap-0.5"
+                  >
+                    Get credentials <ExternalLink className="h-2.5 w-2.5" />
+                  </a>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Input
+                  placeholder="App Identifier  (from Novu Dashboard → Settings)"
+                  value={appIdInput}
+                  onChange={(e) => setAppIdInput(e.target.value)}
+                  className="h-8 text-xs font-mono"
+                />
+                <Input
+                  type="password"
+                  placeholder="API Key  (from Novu Dashboard → API Keys)"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+
+              {!novuConfigured && (
+                <div className="pt-1 p-2 rounded-md bg-blue-500/5 border border-blue-500/20 text-[11px] space-y-1">
+                  <div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                    <Info className="h-3 w-3" /> How to get your Novu credentials
+                  </div>
+                  <ol className="text-muted-foreground space-y-0.5 pl-3.5 list-decimal">
+                    <li>Sign up free at <a href="https://novu.co" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">novu.co</a></li>
+                    <li>Go to <strong>Settings → API Keys</strong> — copy your App ID &amp; API Key</li>
+                    <li>Create a workflow named <code className="bg-muted px-1 rounded text-[10px]">task-due-alert</code> with an Email step</li>
+                    <li>Paste both keys above and Save</li>
+                  </ol>
+                </div>
+              )}
             </div>
 
-            {/* Threshold Selector */}
+            {/* ── Alert Threshold ── */}
             <div className="space-y-1.5">
-              <Label htmlFor="threshold" className="text-xs font-medium">
-                Due Date Alert Proximity
-              </Label>
+              <Label htmlFor="threshold" className="text-xs font-medium">Due Date Alert Window</Label>
               <Select value={thresholdHours} onValueChange={setThresholdHours}>
                 <SelectTrigger id="threshold" className="h-9 text-xs">
                   <SelectValue placeholder="Select alert proximity" />
@@ -538,201 +504,109 @@ export function NovuNotificationCenter({
                   <SelectItem value="48">48 hours before due date</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground">
-                Only triggers notifications when tasks come within this time of their due date.
-              </p>
             </div>
 
-            {/* Desktop Web Notifications */}
+            {/* ── Desktop Push ── */}
             <div className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-muted/20">
               <div className="space-y-0.5">
-                <Label className="text-xs font-medium cursor-pointer">Desktop Push Notifications</Label>
-                <p className="text-[11px] text-muted-foreground">
-                  Receive browser notifications when a task is due soon
-                </p>
+                <Label className="text-xs font-medium">Desktop Push Notifications</Label>
+                <p className="text-[11px] text-muted-foreground">Browser alert when a task is due soon</p>
               </div>
               <Switch
                 checked={browserNotifs}
                 onCheckedChange={async (checked) => {
                   if (checked) {
                     const perm = await requestBrowserNotificationPermission();
-                    if (perm === 'granted') {
-                      setBrowserNotifs(true);
-                      toast.success('Desktop notifications enabled');
-                    } else {
-                      setBrowserNotifs(false);
-                      toast.error('Permission denied by browser');
-                    }
-                  } else {
-                    setBrowserNotifs(false);
-                  }
+                    if (perm === 'granted') { setBrowserNotifs(true); toast.success('Desktop notifications enabled'); }
+                    else { setBrowserNotifs(false); toast.error('Permission denied by browser'); }
+                  } else setBrowserNotifs(false);
                 }}
               />
             </div>
 
-            {/* Sound alert */}
+            {/* ── Sound ── */}
             <div className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-muted/20">
               <div className="space-y-0.5">
-                <Label className="text-xs font-medium cursor-pointer">Sound Alert</Label>
-                <p className="text-[11px] text-muted-foreground">
-                  Play gentle chime for critical due alerts
-                </p>
+                <Label className="text-xs font-medium">Sound Alert</Label>
+                <p className="text-[11px] text-muted-foreground">Play chime for critical due alerts</p>
               </div>
               <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} />
             </div>
 
-            {/* Email Notifications */}
+            {/* ── Email via Novu ── */}
             <div className="space-y-2 p-3 rounded-lg border border-border/60 bg-muted/20">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-xs font-medium cursor-pointer flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5 text-primary" />
-                    <span>Email Notifications</span>
-                    {emailConfigured && (
-                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
-                        ✓ Ready
-                      </span>
-                    )}
+                  <Label className="text-xs font-medium flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5 text-primary" /> Email Notifications via Novu
                   </Label>
                   <p className="text-[11px] text-muted-foreground">
-                    Real email alerts via EmailJS — no backend needed
+                    Triggers the <code className="bg-muted px-1 rounded text-[10px]">task-due-alert</code> workflow
                   </p>
                 </div>
                 <Switch checked={emailNotifs} onCheckedChange={setEmailNotifs} />
               </div>
 
               {emailNotifs && (
-                <div className="pt-2 border-t border-border/40 space-y-2.5">
-                  {/* Recipient */}
-                  <div className="space-y-1">
-                    <Label htmlFor="targetEmail" className="text-[11px] text-muted-foreground">
-                      Recipient Email
-                    </Label>
-                    <div className="flex gap-1.5">
-                      <Input
-                        id="targetEmail"
-                        placeholder="ajgd@rocketmail.com"
-                        value={targetEmail}
-                        onChange={(e) => setTargetEmail(e.target.value)}
-                        className="h-8 text-xs font-mono"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs gap-1 shrink-0"
-                        onClick={handleTestEmail}
-                        disabled={!emailConfigured}
-                        title={emailConfigured ? 'Send test email' : 'Configure EmailJS first'}
-                      >
-                        <Send className="h-3 w-3" /> Test
-                      </Button>
-                    </div>
+                <div className="pt-2 border-t border-border/40 space-y-1.5">
+                  <Label htmlFor="targetEmail" className="text-[11px] text-muted-foreground">
+                    Recipient Email
+                  </Label>
+                  <div className="flex gap-1.5">
+                    <Input
+                      id="targetEmail"
+                      placeholder="ajgd@rocketmail.com"
+                      value={targetEmail}
+                      onChange={(e) => setTargetEmail(e.target.value)}
+                      className="h-8 text-xs font-mono"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1 shrink-0"
+                      onClick={handleTestEmail}
+                      title="Trigger Novu task-due-alert workflow"
+                    >
+                      <Send className="h-3 w-3" /> Test
+                    </Button>
                   </div>
-
-                  {/* EmailJS credentials */}
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <Key className="h-3 w-3" /> EmailJS Credentials
-                    </Label>
-                    <Input
-                      placeholder="Service ID  (e.g. service_xxxxxx)"
-                      value={ejsServiceId}
-                      onChange={(e) => setEjsServiceId(e.target.value)}
-                      className="h-8 text-xs font-mono"
-                    />
-                    <Input
-                      placeholder="Template ID  (e.g. template_xxxxxx)"
-                      value={ejsTemplateId}
-                      onChange={(e) => setEjsTemplateId(e.target.value)}
-                      className="h-8 text-xs font-mono"
-                    />
-                    <Input
-                      placeholder="Public Key  (e.g. aBcDeFgHiJkL_xxxxx)"
-                      value={ejsPublicKey}
-                      onChange={(e) => setEjsPublicKey(e.target.value)}
-                      className="h-8 text-xs font-mono"
-                    />
-                  </div>
-
-                  {/* Setup guide shown only when not yet configured */}
-                  {!emailConfigured && (
-                    <div className="p-2.5 rounded-md bg-blue-500/5 border border-blue-500/20 text-[11px] space-y-1.5">
-                      <div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                        <Info className="h-3 w-3" /> Quick setup — free, no backend required
-                      </div>
-                      <ol className="text-muted-foreground space-y-1 pl-3.5 list-decimal">
-                        <li>
-                          Sign up at{' '}
-                          <a href="https://emailjs.com" target="_blank" rel="noopener noreferrer"
-                            className="text-primary underline underline-offset-2">emailjs.com</a>
-                        </li>
-                        <li>Add an <strong>Email Service</strong> (Gmail / Yahoo / Outlook)</li>
-                        <li>
-                          Create an <strong>Email Template</strong> with variables:<br />
-                          <code className="bg-muted px-1 rounded text-[10px] break-all">
-                            {'{{to_email}}, {{task_title}}, {{time_label}}, {{due_date}}, {{app_url}}'}
-                          </code>
-                        </li>
-                        <li>Paste Service ID, Template ID &amp; Public Key above, then Save</li>
-                      </ol>
-                      <p className="text-[10px] text-muted-foreground/60 pt-0.5">
-                        Free tier: 200 emails/month · Works with Gmail &amp; Yahoo · No domain needed
-                      </p>
-                    </div>
+                  {!novuConfigured && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                      ⚠ Add your Novu API Key above to enable email delivery.
+                    </p>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Test button */}
+            {/* ── Test Buttons ── */}
             <div className="pt-1 flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="flex-1 text-xs h-8 gap-1.5"
-                onClick={handleTestAlert}
-              >
+              <Button type="button" variant="outline" size="sm" className="flex-1 text-xs h-8 gap-1.5" onClick={handleTestAlert}>
                 <Sparkles className="h-3.5 w-3.5 text-primary" /> Test In-App Alert
               </Button>
               {emailNotifs && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 text-xs h-8 gap-1.5"
-                  onClick={handleTestEmail}
-                >
-                  <Mail className="h-3.5 w-3.5 text-primary" /> Test Email Alert
+                <Button type="button" variant="outline" size="sm" className="flex-1 text-xs h-8 gap-1.5" onClick={handleTestEmail}>
+                  <Mail className="h-3.5 w-3.5 text-primary" /> Test Email
                 </Button>
               )}
             </div>
 
-            {/* Version Information */}
+            {/* ── Version ── */}
             <div className="flex items-center justify-between pt-2 px-1 text-[11px] text-muted-foreground border-t border-border/40">
               <span className="flex items-center gap-1">
                 <Info className="h-3 w-3 text-primary/70" />
-                <span>Version: <strong className="text-foreground">{APP_VERSION_INFO.version}</strong></span>
+                Version: <strong className="text-foreground ml-1">{APP_VERSION_INFO.version}</strong>
               </span>
               <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono">
-                SemVer: {APP_VERSION_INFO.major}.{APP_VERSION_INFO.minor}.{APP_VERSION_INFO.patch}
+                {APP_VERSION_INFO.major}.{APP_VERSION_INFO.minor}.{APP_VERSION_INFO.patch}
               </span>
             </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setSettingsOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="button" size="sm" onClick={handleSaveSettings}>
-              Save Settings
-            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setSettingsOpen(false)}>Cancel</Button>
+            <Button type="button" size="sm" onClick={handleSaveSettings}>Save Settings</Button>
           </div>
         </DialogContent>
       </Dialog>

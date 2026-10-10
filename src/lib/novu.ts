@@ -1,25 +1,20 @@
 /**
- * Notification utilities for Minimalist
- * Email delivery: EmailJS (browser-native, no backend needed)
- * Reference: https://www.emailjs.com/docs/
+ * Novu notification utilities
+ * Reference: https://github.com/novuhq/novu
+ * Docs: https://docs.novu.co
  */
 
 import { Task } from '@/hooks/useTasks';
-import emailjs from '@emailjs/browser';
 
 export interface NovuConfig {
-  applicationIdentifier: string;
-  apiKey?: string;
-  workflowId: string;
-  thresholdHours: number;
+  applicationIdentifier: string; // Novu App ID (public) — used for Inbox widget
+  apiKey: string;                 // Novu API Key (secret) — used to trigger workflows
+  subscriberId: string;           // Novu subscriber ID (defaults to user ID)
+  thresholdHours: number;         // Alert window before due date
   browserNotificationsEnabled: boolean;
   soundEnabled: boolean;
   emailNotificationsEnabled: boolean;
-  targetEmail: string;
-  // EmailJS credentials (no backend needed)
-  emailjsServiceId: string;
-  emailjsTemplateId: string;
-  emailjsPublicKey: string;
+  targetEmail: string;            // Recipient email for due alerts
 }
 
 const STORAGE_KEY = 'minimalist_novu_config';
@@ -27,15 +22,12 @@ const STORAGE_KEY = 'minimalist_novu_config';
 export const DEFAULT_NOVU_CONFIG: NovuConfig = {
   applicationIdentifier: (import.meta.env.VITE_NOVU_APP_IDENTIFIER as string) || '',
   apiKey: (import.meta.env.VITE_NOVU_API_KEY as string) || '',
-  workflowId: 'task-due-alert',
+  subscriberId: '',
   thresholdHours: 24,
   browserNotificationsEnabled: true,
   soundEnabled: true,
   emailNotificationsEnabled: true,
   targetEmail: '',
-  emailjsServiceId: '',
-  emailjsTemplateId: '',
-  emailjsPublicKey: '',
 };
 
 export function getNovuConfig(): NovuConfig {
@@ -45,7 +37,7 @@ export function getNovuConfig(): NovuConfig {
       return { ...DEFAULT_NOVU_CONFIG, ...JSON.parse(saved) };
     }
   } catch (e) {
-    console.error('Failed to read config from localStorage:', e);
+    console.error('Failed to read Novu config:', e);
   }
   return DEFAULT_NOVU_CONFIG;
 }
@@ -56,215 +48,131 @@ export function saveNovuConfig(config: Partial<NovuConfig>): NovuConfig {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   } catch (e) {
-    console.error('Failed to save config:', e);
+    console.error('Failed to save Novu config:', e);
   }
   return updated;
 }
 
-/**
- * Returns true if EmailJS is fully configured
- */
-export function isEmailJsConfigured(): boolean {
+export function isNovuConfigured(): boolean {
   const c = getNovuConfig();
-  return !!(c.emailjsServiceId && c.emailjsTemplateId && c.emailjsPublicKey);
+  return !!(c.applicationIdentifier && c.apiKey);
 }
 
-/**
- * Request permission for Desktop Web Notifications
- */
+/** Request browser push notification permission */
 export async function requestBrowserNotificationPermission(): Promise<NotificationPermission> {
   if (!('Notification' in window)) return 'denied';
   if (Notification.permission === 'granted') return 'granted';
   return await Notification.requestPermission();
 }
 
-/**
- * Trigger an in-browser desktop notification
- */
+/** Fire a native browser desktop notification */
 export function sendBrowserDueNotification(title: string, body: string, onClick?: () => void) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   try {
-    const notification = new Notification(title, {
+    const n = new Notification(title, {
       body,
       icon: '/favicon.png',
       badge: '/favicon.png',
-      silent: false,
     });
     if (onClick) {
-      notification.onclick = () => {
-        window.focus();
-        onClick();
-        notification.close();
-      };
+      n.onclick = () => { window.focus(); onClick(); n.close(); };
     }
   } catch (e) {
-    console.error('Error showing browser notification:', e);
+    console.error('Browser notification error:', e);
   }
 }
 
 /**
- * Send an email due-date alert via EmailJS (pure browser, no backend)
- *
- * Setup:
- *  1. Create a free account at https://emailjs.com
- *  2. Add an Email Service (Gmail, Outlook, etc.)
- *  3. Create an Email Template with variables:
- *       {{to_email}}, {{task_title}}, {{time_label}}, {{due_date}}, {{app_url}}
- *  4. Paste Service ID, Template ID, Public Key into Notification Settings
+ * Trigger a Novu workflow event to send an email due-date alert.
+ * Calls POST https://api.novu.co/v1/events/trigger
+ * Requires:
+ *  - Novu account at https://app.novu.co
+ *  - A workflow with ID "task-due-alert" that has an Email step
+ *  - subscriberId, API Key, and App Identifier configured in settings
  */
 export async function sendEmailDueNotification(
   task: Task,
   recipientEmail: string,
-  timeLabel: string
-): Promise<{ success: boolean; message: string; realEmailSent?: boolean }> {
+  timeLabel: string,
+  userId?: string
+): Promise<{ success: boolean; message: string }> {
   if (!recipientEmail || !recipientEmail.includes('@')) {
     return { success: false, message: 'Invalid recipient email address' };
   }
 
   const config = getNovuConfig();
 
-  // --- Path 1: EmailJS (no backend needed) ---
-  if (config.emailjsServiceId && config.emailjsTemplateId && config.emailjsPublicKey) {
-    try {
-      const dueDateStr = task.due_date
-        ? new Date(task.due_date).toLocaleString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-        : 'Not set';
-
-      const templateParams = {
-        to_email: recipientEmail,
-        to_name: recipientEmail.split('@')[0],
-        task_title: task.title,
-        task_description: task.description || 'No description',
-        time_label: timeLabel,
-        due_date: dueDateStr,
-        app_url: window.location.origin,
-        urgency: timeLabel.toLowerCase().includes('overdue')
-          ? 'OVERDUE'
-          : timeLabel.toLowerCase().includes('minute')
-          ? 'CRITICAL'
-          : 'UPCOMING',
-      };
-
-      const result = await emailjs.send(
-        config.emailjsServiceId,
-        config.emailjsTemplateId,
-        templateParams,
-        { publicKey: config.emailjsPublicKey }
-      );
-
-      if (result.status === 200) {
-        logEmailDispatchEvent({
-          taskId: task.id,
-          taskTitle: task.title,
-          email: recipientEmail,
-          timeLabel,
-          sentAt: new Date().toISOString(),
-          provider: 'emailjs',
-        });
-        return {
-          success: true,
-          realEmailSent: true,
-          message: `Email delivered to ${recipientEmail} via EmailJS`,
-        };
-      }
-
-      return {
-        success: false,
-        realEmailSent: false,
-        message: `EmailJS returned status ${result.status}`,
-      };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('EmailJS send error:', err);
-      return {
-        success: false,
-        realEmailSent: false,
-        message: `EmailJS error: ${msg}`,
-      };
-    }
+  if (!config.apiKey) {
+    return {
+      success: false,
+      message: 'Novu API Key not configured. Open ⚙️ Notification Settings to add it.',
+    };
   }
 
-  // --- Path 2: Novu Cloud API (if API key configured) ---
-  if (config.apiKey) {
-    try {
-      const response = await fetch('https://api.novu.co/v1/events/trigger', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `ApiKey ${config.apiKey}`,
-        },
-        body: JSON.stringify({
-          name: config.workflowId || 'task-due-alert',
-          to: { subscriberId: task.user_id || 'user', email: recipientEmail },
-          payload: {
-            taskTitle: task.title,
-            taskDescription: task.description || '',
-            dueDate: task.due_date,
-            timeLabel,
-            appUrl: window.location.origin,
-          },
-        }),
-      });
+  const subscriberId = config.subscriberId || userId || recipientEmail;
 
-      if (response.ok) {
-        logEmailDispatchEvent({
-          taskId: task.id,
-          taskTitle: task.title,
-          email: recipientEmail,
-          timeLabel,
-          sentAt: new Date().toISOString(),
-          provider: 'novu',
-        });
-        return {
-          success: true,
-          realEmailSent: true,
-          message: `Novu email dispatched to ${recipientEmail}`,
-        };
-      }
-    } catch (err) {
-      console.warn('Novu API dispatch failed:', err);
-    }
-  }
-
-  // --- Not configured ---
-  return {
-    success: false,
-    realEmailSent: false,
-    message: 'EmailJS not configured. Open Notification Settings → Email to set it up.',
-  };
-}
-
-/**
- * Log email dispatch history in localStorage (audit trail)
- */
-function logEmailDispatchEvent(event: {
-  taskId: string;
-  taskTitle: string;
-  email: string;
-  timeLabel: string;
-  sentAt: string;
-  provider?: string;
-}) {
   try {
-    const raw = localStorage.getItem('minimalist_email_dispatches') || '[]';
-    const list = JSON.parse(raw);
-    list.unshift(event);
-    localStorage.setItem('minimalist_email_dispatches', JSON.stringify(list.slice(0, 30)));
-  } catch (e) {
-    console.error('Failed to log email dispatch event:', e);
+    const response = await fetch('https://api.novu.co/v1/events/trigger', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `ApiKey ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        name: 'task-due-alert',
+        to: {
+          subscriberId,
+          email: recipientEmail,
+        },
+        payload: {
+          taskTitle: task.title,
+          taskDescription: task.description || '',
+          dueDate: task.due_date
+            ? new Date(task.due_date).toLocaleString('en-US', {
+                weekday: 'short', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              })
+            : 'Not set',
+          timeLabel,
+          appUrl: window.location.origin,
+          urgency: timeLabel.toLowerCase().includes('overdue')
+            ? 'OVERDUE'
+            : timeLabel.toLowerCase().includes('minute')
+            ? 'CRITICAL'
+            : 'UPCOMING',
+        },
+      }),
+    });
+
+    if (response.ok) {
+      logEmailDispatch({ taskId: task.id, taskTitle: task.title, email: recipientEmail, timeLabel });
+      return { success: true, message: `Novu alert sent to ${recipientEmail} for "${task.title}"` };
+    }
+
+    let errMsg = `Novu API error ${response.status}`;
+    try {
+      const errData = await response.json();
+      errMsg = errData.message || errMsg;
+    } catch { /* ignore */ }
+
+    return { success: false, message: errMsg };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('Novu trigger error:', err);
+    return { success: false, message: `Network error: ${msg}` };
   }
 }
 
-/**
- * Play a gentle alert chime for due task notifications
- */
+function logEmailDispatch(event: { taskId: string; taskTitle: string; email: string; timeLabel: string }) {
+  try {
+    const raw = localStorage.getItem('minimalist_novu_dispatches') || '[]';
+    const list = JSON.parse(raw);
+    list.unshift({ ...event, sentAt: new Date().toISOString() });
+    localStorage.setItem('minimalist_novu_dispatches', JSON.stringify(list.slice(0, 30)));
+  } catch { /* ignore */ }
+}
+
+/** Play a gentle chime for critical due alerts */
 export function playDueAlertSound() {
   try {
     const ctx = new (window.AudioContext ||
@@ -272,15 +180,13 @@ export function playDueAlertSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
     gain.gain.setValueAtTime(0.15, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.3);
-  } catch {
-    // Ignore audio context errors
-  }
+  } catch { /* ignore */ }
 }
