@@ -120,12 +120,12 @@ export async function sendEmailDueNotification(
   const subscriberId = recipientEmail;
 
   try {
-    // In local dev mode we use Vite's proxy (/api/n-proxy) to bypass CORS and Adblockers.
-    // In production, if /api/n-proxy is not proxied by the static server, we fallback to Novu's API directly.
-    let endpoint = '/api/n-proxy';
-    if (import.meta.env.PROD) {
-      endpoint = 'https://api.novu.co/v1/events/trigger';
-    }
+    // In local dev: Vite proxy (/api/n-proxy) bypasses CORS.
+    // In production: use a Cloudflare Worker URL set via VITE_NOVU_PROXY_URL env variable.
+    const prodProxy = (import.meta.env.VITE_NOVU_PROXY_URL as string) || '';
+    const endpoint = import.meta.env.PROD && prodProxy
+      ? prodProxy
+      : '/api/n-proxy';
 
     const payloadBody = JSON.stringify({
       name: 'task-due-alert',
@@ -157,21 +157,11 @@ export async function sendEmailDueNotification(
       Authorization: `ApiKey ${config.apiKey}`,
     };
 
-    let response = await fetch(endpoint, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers,
       body: payloadBody,
-    }).catch(() => null);
-
-    // If local proxy 404s in production, try direct Novu API URL
-    if (!response || response.status === 404) {
-      endpoint = 'https://api.novu.co/v1/events/trigger';
-      response = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: payloadBody,
-      });
-    }
+    });
 
     if (response.ok) {
       logEmailDispatch({ taskId: task.id, taskTitle: task.title, email: recipientEmail, timeLabel });
