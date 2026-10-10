@@ -53,11 +53,20 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Inbox } from '@novu/react';
 
+import {
+  Mail,
+  Send,
+  Info,
+} from 'lucide-react';
+import { APP_VERSION, APP_VERSION_INFO } from '@/lib/version';
+import { sendEmailDueNotification } from '@/lib/novu';
+
 interface NovuNotificationCenterProps {
   tasks: Task[];
   onCompleteTask?: (taskId: string) => Promise<unknown> | void;
   onSelectTask?: (task: Task) => void;
   userId?: string;
+  userEmail?: string;
 }
 
 export function NovuNotificationCenter({
@@ -65,6 +74,7 @@ export function NovuNotificationCenter({
   onCompleteTask,
   onSelectTask,
   userId = 'default-user',
+  userEmail = '',
 }: NovuNotificationCenterProps) {
   const {
     dueAlerts,
@@ -74,7 +84,7 @@ export function NovuNotificationCenter({
     snoozeAlert,
     refreshConfig,
     config,
-  } = useDueTaskAlerts(tasks);
+  } = useDueTaskAlerts(tasks, userEmail);
 
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -83,6 +93,15 @@ export function NovuNotificationCenter({
   const [thresholdHours, setThresholdHours] = useState(String(config.thresholdHours));
   const [browserNotifs, setBrowserNotifs] = useState(config.browserNotificationsEnabled);
   const [soundEnabled, setSoundEnabled] = useState(config.soundEnabled);
+  const [emailNotifs, setEmailNotifs] = useState(config.emailNotificationsEnabled);
+  const [targetEmail, setTargetEmail] = useState(config.targetEmail || userEmail || '');
+
+  // Keep targetEmail synchronized if userEmail loads
+  useEffect(() => {
+    if (!targetEmail && userEmail) {
+      setTargetEmail(userEmail);
+    }
+  }, [userEmail, targetEmail]);
 
   // Handle saving Novu settings
   const handleSaveSettings = () => {
@@ -92,10 +111,45 @@ export function NovuNotificationCenter({
       thresholdHours: Number(thresholdHours) || 24,
       browserNotificationsEnabled: browserNotifs,
       soundEnabled: soundEnabled,
+      emailNotificationsEnabled: emailNotifs,
+      targetEmail: targetEmail.trim(),
     });
     refreshConfig();
     setSettingsOpen(false);
     toast.success('Notification settings saved');
+  };
+
+  // Test email notification trigger
+  const handleTestEmail = async () => {
+    const dest = targetEmail.trim() || userEmail;
+    if (!dest) {
+      toast.error('Please enter an email address first');
+      return;
+    }
+    const mockTask: Task = {
+      id: 'test-task',
+      title: 'Complete Project Architecture Review',
+      description: 'Prepare diagrams and verify Novu email workflows.',
+      tags: ['high-priority', 'dev'],
+      due_date: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
+      is_completed: false,
+      is_pinned: false,
+      is_template: false,
+      completed_at: null,
+      position: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      user_id: userId,
+      repeat_daily: false,
+    };
+    const res = await sendEmailDueNotification(mockTask, dest, 'Due in 45 minutes');
+    if (res.success) {
+      toast.success('Test email alert dispatched!', {
+        description: `Sent to ${dest}`,
+      });
+    } else {
+      toast.error(res.message);
+    }
   };
 
   // Test notification trigger
@@ -509,17 +563,85 @@ export function NovuNotificationCenter({
               <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} />
             </div>
 
+            {/* Email Notifications */}
+            <div className="space-y-2 p-3 rounded-lg border border-border/60 bg-muted/20">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-medium cursor-pointer flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5 text-primary" />
+                    <span>Email Notifications</span>
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Receive email alerts when tasks approach due date
+                  </p>
+                </div>
+                <Switch checked={emailNotifs} onCheckedChange={setEmailNotifs} />
+              </div>
+
+              {emailNotifs && (
+                <div className="pt-2 border-t border-border/40 space-y-1.5">
+                  <Label htmlFor="targetEmail" className="text-[11px] text-muted-foreground">
+                    Recipient Email Address
+                  </Label>
+                  <div className="flex gap-1.5">
+                    <Input
+                      id="targetEmail"
+                      placeholder="you@example.com"
+                      value={targetEmail}
+                      onChange={(e) => setTargetEmail(e.target.value)}
+                      className="h-8 text-xs font-mono"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1 shrink-0"
+                      onClick={handleTestEmail}
+                      title="Send test email alert"
+                    >
+                      <Send className="h-3 w-3" /> Test Email
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Dispatches via Novu multi-channel email workflow.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Test button */}
-            <div className="pt-1">
+            <div className="pt-1 flex gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="w-full text-xs h-8 gap-1.5"
+                className="flex-1 text-xs h-8 gap-1.5"
                 onClick={handleTestAlert}
               >
-                <Sparkles className="h-3.5 w-3.5 text-primary" /> Test Due Alert Notification
+                <Sparkles className="h-3.5 w-3.5 text-primary" /> Test In-App Alert
               </Button>
+              {emailNotifs && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs h-8 gap-1.5"
+                  onClick={handleTestEmail}
+                >
+                  <Mail className="h-3.5 w-3.5 text-primary" /> Test Email Alert
+                </Button>
+              )}
+            </div>
+
+            {/* Version Information */}
+            <div className="flex items-center justify-between pt-2 px-1 text-[11px] text-muted-foreground border-t border-border/40">
+              <span className="flex items-center gap-1">
+                <Info className="h-3 w-3 text-primary/70" />
+                <span>Version: <strong className="text-foreground">{APP_VERSION_INFO.version}</strong></span>
+              </span>
+              <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono">
+                SemVer: {APP_VERSION_INFO.major}.{APP_VERSION_INFO.minor}.{APP_VERSION_INFO.patch}
+              </span>
             </div>
           </div>
 

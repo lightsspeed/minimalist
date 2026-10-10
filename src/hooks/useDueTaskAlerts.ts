@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Task } from './useTasks';
-import { getNovuConfig, sendBrowserDueNotification, playDueAlertSound } from '@/lib/novu';
+import { getNovuConfig, sendBrowserDueNotification, playDueAlertSound, sendEmailDueNotification } from '@/lib/novu';
 import { differenceInMinutes, differenceInHours, formatDistanceToNow, isPast } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -14,7 +14,7 @@ export interface DueTaskAlert {
   isOverdue: boolean;
 }
 
-export function useDueTaskAlerts(tasks: Task[]) {
+export function useDueTaskAlerts(tasks: Task[], userEmail?: string) {
   const [config, setConfig] = useState(getNovuConfig());
   const [snoozedTaskIds, setSnoozedTaskIds] = useState<Record<string, number>>(() => {
     try {
@@ -123,6 +123,18 @@ export function useDueTaskAlerts(tasks: Task[]) {
           playDueAlertSound();
         }
 
+        // Email notification dispatch
+        const recipient = config.targetEmail || userEmail;
+        if (config.emailNotificationsEnabled && recipient) {
+          sendEmailDueNotification(alert.task, recipient, alert.timeLabel).then((res) => {
+            if (res.success) {
+              toast.info(`Email dispatched: ${alert.task.title}`, {
+                description: `Sent to ${recipient}`,
+              });
+            }
+          });
+        }
+
         toast.warning(`Task approaching due date: "${alert.task.title}"`, {
           description: alert.timeLabel,
           duration: 5000,
@@ -133,7 +145,7 @@ export function useDueTaskAlerts(tasks: Task[]) {
     if (hasNewAlert) {
       sessionStorage.setItem(notifiedKey, JSON.stringify(notified));
     }
-  }, [dueAlerts, config.browserNotificationsEnabled, config.soundEnabled]);
+  }, [dueAlerts, config.browserNotificationsEnabled, config.soundEnabled, config.emailNotificationsEnabled, config.targetEmail, userEmail]);
 
   // Snooze an alert for N hours
   const snoozeAlert = useCallback((taskId: string, hours: number = 1) => {

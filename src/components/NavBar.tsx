@@ -25,6 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { APP_VERSION } from '@/lib/version';
 import logo from '@/assets/logo.png';
 
 export function NavBar() {
@@ -79,6 +80,9 @@ export function NavBar() {
                 className="h-8 w-8 flex-shrink-0 dark:brightness-0 dark:invert"
               />
               <h1 className="font-semibold text-lg truncate">Minimalist</h1>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0 font-medium">
+                v{APP_VERSION}
+              </span>
             </Link>
           </div>
 
@@ -89,6 +93,7 @@ export function NavBar() {
                 tasks={tasks}
                 onCompleteTask={(id) => updateTask(id, { is_completed: true })}
                 userId={session?.user?.id}
+                userEmail={session?.user?.email}
               />
               <ThemeToggle />
               <DropdownMenu>
@@ -173,6 +178,7 @@ export function NavBar() {
                   tasks={tasks}
                   onCompleteTask={(id) => updateTask(id, { is_completed: true })}
                   userId={session?.user?.id}
+                  userEmail={session?.user?.email}
                 />
                 <ThemeToggle />
                 <Tooltip>
