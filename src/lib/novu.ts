@@ -5,6 +5,9 @@
 
 import { Task } from '@/hooks/useTasks';
 
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) || '';
+const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) || '';
+
 export interface NovuConfig {
   applicationIdentifier: string;
   apiKey?: string;
@@ -94,20 +97,77 @@ export function sendBrowserDueNotification(title: string, body: string, onClick?
 }
 
 /**
- * Send an Email Due Notification (via Novu Workflow or Email Dispatcher)
+ * Send an Email Due Notification
+ * Primary path: Supabase Edge Function (send-email) via Resend
+ * Secondary path: Novu Cloud API (if apiKey configured)
+ * Fallback: log to localStorage with a clear "not sent" notice
  */
 export async function sendEmailDueNotification(
   task: Task,
   recipientEmail: string,
   timeLabel: string
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; realEmailSent?: boolean }> {
   if (!recipientEmail || !recipientEmail.includes('@')) {
     return { success: false, message: 'Invalid recipient email address' };
   }
 
   const config = getNovuConfig();
 
-  // If Novu API Key is provided, trigger the official Novu Workflow Event
+  // --- Path 1: Supabase Edge Function (Resend) ---
+  if (SUPABASE_URL) {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          to: recipientEmail,
+          taskTitle: task.title,
+          taskDescription: task.description || '',
+          dueDate: task.due_date,
+          timeLabel,
+          appUrl: window.location.origin,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        logEmailDispatchEvent({
+          taskId: task.id,
+          taskTitle: task.title,
+          email: recipientEmail,
+          timeLabel,
+          sentAt: new Date().toISOString(),
+          provider: 'resend',
+        });
+        return {
+          success: true,
+          realEmailSent: true,
+          message: `Email sent to ${recipientEmail} via Resend`,
+        };
+      }
+
+      // If RESEND_API_KEY not configured in Supabase, fall through
+      if (data.error && data.error.includes('RESEND_API_KEY')) {
+        console.warn('Resend not configured:', data.error);
+        // fall through to Novu or local log
+      } else {
+        return {
+          success: false,
+          realEmailSent: false,
+          message: data.error || 'Email delivery failed',
+        };
+      }
+    } catch (err) {
+      console.warn('send-email edge function unavailable:', err);
+    }
+  }
+
+  // --- Path 2: Novu Cloud API (optional, if apiKey configured) ---
   if (config.apiKey) {
     try {
       const response = await fetch('https://api.novu.co/v1/events/trigger', {
@@ -126,35 +186,37 @@ export async function sendEmailDueNotification(
             taskTitle: task.title,
             taskDescription: task.description || '',
             dueDate: task.due_date,
-            timeLabel: timeLabel,
+            timeLabel,
             appUrl: window.location.origin,
           },
         }),
       });
 
       if (response.ok) {
+        logEmailDispatchEvent({
+          taskId: task.id,
+          taskTitle: task.title,
+          email: recipientEmail,
+          timeLabel,
+          sentAt: new Date().toISOString(),
+          provider: 'novu',
+        });
         return {
           success: true,
+          realEmailSent: true,
           message: `Novu email dispatched to ${recipientEmail} for "${task.title}"`,
         };
       }
     } catch (err) {
-      console.warn('Novu API dispatch failed, falling back to local dispatch log:', err);
+      console.warn('Novu API dispatch failed:', err);
     }
   }
 
-  // Simulated email dispatch log (stored in local notification events for audit)
-  logEmailDispatchEvent({
-    taskId: task.id,
-    taskTitle: task.title,
-    email: recipientEmail,
-    timeLabel,
-    sentAt: new Date().toISOString(),
-  });
-
+  // --- Fallback: no real email backend configured ---
   return {
-    success: true,
-    message: `Email alert sent to ${recipientEmail}: "${task.title}" (${timeLabel})`,
+    success: false,
+    realEmailSent: false,
+    message: 'Email not sent: RESEND_API_KEY not set in Supabase secrets. See setup instructions.',
   };
 }
 
@@ -167,6 +229,7 @@ function logEmailDispatchEvent(event: {
   email: string;
   timeLabel: string;
   sentAt: string;
+  provider?: string;
 }) {
   try {
     const raw = localStorage.getItem('minimalist_email_dispatches') || '[]';

@@ -129,7 +129,7 @@ export function NovuNotificationCenter({
     const mockTask: Task = {
       id: 'test-task',
       title: 'Complete Project Architecture Review',
-      description: 'Prepare diagrams and verify Novu email workflows.',
+      description: 'Prepare diagrams and verify email workflows.',
       tags: ['high-priority', 'dev'],
       due_date: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
       is_completed: false,
@@ -142,13 +142,22 @@ export function NovuNotificationCenter({
       user_id: userId,
       repeat_daily: false,
     };
+    toast.loading('Sending test email...', { id: 'email-test' });
     const res = await sendEmailDueNotification(mockTask, dest, 'Due in 45 minutes');
-    if (res.success) {
-      toast.success('Test email alert dispatched!', {
-        description: `Sent to ${dest}`,
+    if (res.success && res.realEmailSent) {
+      toast.success(`✅ Email delivered to ${dest}!`, {
+        id: 'email-test',
+        description: res.message,
+        duration: 6000,
+      });
+    } else if (!res.success) {
+      toast.error('Email not delivered', {
+        id: 'email-test',
+        description: res.message,
+        duration: 8000,
       });
     } else {
-      toast.error(res.message);
+      toast.info('Email queued', { id: 'email-test', description: res.message });
     }
   };
 
@@ -579,7 +588,7 @@ export function NovuNotificationCenter({
               </div>
 
               {emailNotifs && (
-                <div className="pt-2 border-t border-border/40 space-y-1.5">
+                <div className="pt-2 border-t border-border/40 space-y-2">
                   <Label htmlFor="targetEmail" className="text-[11px] text-muted-foreground">
                     Recipient Email Address
                   </Label>
@@ -602,9 +611,27 @@ export function NovuNotificationCenter({
                       <Send className="h-3 w-3" /> Test Email
                     </Button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Dispatches via Novu multi-channel email workflow.
-                  </p>
+
+                  {/* Resend setup instructions */}
+                  <div className="p-2.5 rounded-md bg-blue-500/5 border border-blue-500/20 text-[11px] space-y-1.5">
+                    <div className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                      <Info className="h-3 w-3" /> Setup required to deliver real emails
+                    </div>
+                    <ol className="text-muted-foreground space-y-1 pl-3 list-decimal">
+                      <li>Create a free account at{' '}
+                        <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">resend.com</a>
+                      </li>
+                      <li>Copy your <strong>API Key</strong> from the Resend dashboard</li>
+                      <li>Go to your{' '}
+                        <a href="https://supabase.com/dashboard/project/qsuighkvqbvotufneksl/settings/functions" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">Supabase Secrets</a>
+                      </li>
+                      <li>Add secret: <code className="bg-muted px-1 py-0.5 rounded font-mono text-[10px]">RESEND_API_KEY = re_...</code></li>
+                      <li>Deploy: <code className="bg-muted px-1 py-0.5 rounded font-mono text-[10px]">supabase functions deploy send-email</code></li>
+                    </ol>
+                    <p className="text-[10px] text-muted-foreground/70">
+                      Free tier: 3,000 emails/month · No domain required for testing
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
