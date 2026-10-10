@@ -30,7 +30,7 @@ import {
 } from '@/lib/novu';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Inbox } from '@novu/react';
+import { Inbox, InboxContent } from '@novu/react';
 import { APP_VERSION_INFO } from '@/lib/version';
 
 interface NovuNotificationCenterProps {
@@ -368,11 +368,13 @@ export function NovuNotificationCenter({
                       Dashboard <ExternalLink className="h-2.5 w-2.5" />
                     </a>
                   </div>
-                  <div className="rounded-lg overflow-hidden border border-border min-h-[220px]">
+                  <div className="rounded-lg overflow-hidden border border-border min-h-[400px] relative">
                     <Inbox
                       applicationIdentifier={config.applicationIdentifier}
                       subscriberId={userId}
-                    />
+                    >
+                      <InboxContent />
+                    </Inbox>
                   </div>
                 </div>
               ) : (
