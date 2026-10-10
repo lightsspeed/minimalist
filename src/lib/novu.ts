@@ -1,10 +1,5 @@
-/**
- * Novu notification utilities
- * Reference: https://github.com/novuhq/novu
- * Docs: https://docs.novu.co
- */
-
 import { Task } from '@/hooks/useTasks';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface NovuConfig {
   applicationIdentifier: string; // Novu App ID (public) — used for Inbox widget
@@ -112,14 +107,10 @@ export async function sendEmailDueNotification(
   const subscriberId = config.subscriberId || userId || recipientEmail;
 
   try {
-    const response = await fetch('https://api.novu.co/v1/events/trigger', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `ApiKey ${config.apiKey}`,
-      },
-      body: JSON.stringify({
+    const { data, error } = await supabase.functions.invoke('trigger-novu', {
+      body: {
         name: 'task-due-alert',
+        apiKey: config.apiKey, // Pass key to function to avoid needing secrets setup right now
         to: {
           subscriberId,
           email: recipientEmail,
@@ -141,25 +132,19 @@ export async function sendEmailDueNotification(
             ? 'CRITICAL'
             : 'UPCOMING',
         },
-      }),
+      },
     });
 
-    if (response.ok) {
-      logEmailDispatch({ taskId: task.id, taskTitle: task.title, email: recipientEmail, timeLabel });
-      return { success: true, message: `Novu alert sent to ${recipientEmail} for "${task.title}"` };
-    }
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
 
-    let errMsg = `Novu API error ${response.status}`;
-    try {
-      const errData = await response.json();
-      errMsg = errData.message || errMsg;
-    } catch { /* ignore */ }
+    logEmailDispatch({ taskId: task.id, taskTitle: task.title, email: recipientEmail, timeLabel });
+    return { success: true, message: `Novu alert sent to ${recipientEmail} for "${task.title}"` };
 
-    return { success: false, message: errMsg };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('Novu trigger error:', err);
-    return { success: false, message: `Network error: ${msg}` };
+    return { success: false, message: `Trigger failed: ${msg}` };
   }
 }
 
