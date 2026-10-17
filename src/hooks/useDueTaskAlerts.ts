@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Task } from './useTasks';
 import { getNovuConfig, sendBrowserDueNotification, playDueAlertSound, sendEmailDueNotification } from '@/lib/novu';
 import { differenceInMinutes, differenceInHours, formatDistanceToNow, isPast } from 'date-fns';
@@ -33,6 +33,27 @@ export function useDueTaskAlerts(tasks: Task[], userEmail?: string, userId?: str
     }, 30000);
     return () => clearInterval(timer);
   }, []);
+
+  // Prune stale dedup entries on mount (older than 7 days) to prevent
+  // localStorage from growing forever with entries for old/deleted tasks.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('minimalist_notified_task_ids');
+      if (!raw) return;
+      const notified: Record<string, { at: number; dueDate: string | null } | number> = JSON.parse(raw);
+      const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000; // 7 days ago
+      let changed = false;
+      for (const key of Object.keys(notified)) {
+        const entry = notified[key];
+        const at = typeof entry === 'number' ? entry : entry?.at || 0;
+        if (at < cutoff) {
+          delete notified[key];
+          changed = true;
+        }
+      }
+      if (changed) localStorage.setItem('minimalist_notified_task_ids', JSON.stringify(notified));
+    } catch { /* ignore */ }
+  }, []); // Run once on mount
 
   // Reload config when updated
   const refreshConfig = useCallback(() => {
@@ -98,15 +119,35 @@ export function useDueTaskAlerts(tasks: Task[], userEmail?: string, userId?: str
       .sort((a, b) => a.minutesRemaining - b.minutesRemaining);
   }, [tasks, config.thresholdHours, snoozedTaskIds, currentTime]);
 
-  // Handle automatic notifications when new critical/approaching alerts arrive
+  // --- Refs so the notification effect doesn't re-fire when settings change ---
+  // ROOT BUG FIX: Previously config/userEmail/userId were direct effect dependencies.
+  // Every time the user saved notification settings (refreshConfig() was called),
+  // the config state changed → the effect re-ran → any task whose 30-min dedup
+  // had elapsed received another email. Using refs means ONLY dueAlerts triggers
+  // the effect, not settings changes.
+  const configRef = useRef(config);
+  const userEmailRef = useRef(userEmail);
+  const userIdRef = useRef(userId);
+  useEffect(() => { configRef.current = config; }, [config]);
+  useEffect(() => { userEmailRef.current = userEmail; }, [userEmail]);
+  useEffect(() => { userIdRef.current = userId; }, [userId]);
+
+  // Handle automatic notifications when new critical/approaching alerts arrive.
+  // Depends ONLY on dueAlerts — config/email/userId accessed via refs so that
+  // saving notification settings never re-triggers email sends.
   useEffect(() => {
     if (dueAlerts.length === 0) return;
 
-    // Check if any task needs an active notification firing
+    const cfg = configRef.current;
+    const email = userEmailRef.current;
+    const uid = userIdRef.current;
+
+    // Use localStorage (not sessionStorage) so dedup persists across page
+    // refreshes and new tabs — prevents re-emailing tasks on every reload.
     const notifiedKey = 'minimalist_notified_task_ids';
     let notified: Record<string, { at: number; dueDate: string | null } | number> = {};
     try {
-      notified = JSON.parse(sessionStorage.getItem(notifiedKey) || '{}');
+      notified = JSON.parse(localStorage.getItem(notifiedKey) || '{}');
     } catch {
       notified = {};
     }
@@ -115,6 +156,10 @@ export function useDueTaskAlerts(tasks: Task[], userEmail?: string, userId?: str
     let hasNewAlert = false;
 
     for (const alert of dueAlerts) {
+      // Extra safety guard — completed tasks are filtered by dueAlerts useMemo
+      // but we double-check here in case of any stale-state race condition.
+      if (alert.task.is_completed) continue;
+
       const entry = notified[alert.task.id];
       const lastNotified = typeof entry === 'number' ? entry : entry?.at || 0;
       const recordedDueDate = typeof entry === 'object' && entry !== null ? entry.dueDate : null;
@@ -125,21 +170,21 @@ export function useDueTaskAlerts(tasks: Task[], userEmail?: string, userId?: str
         hasNewAlert = true;
         notified[alert.task.id] = { at: now, dueDate: alert.task.due_date };
 
-        if (config.browserNotificationsEnabled) {
+        if (cfg.browserNotificationsEnabled) {
           sendBrowserDueNotification(
             `Task Due Alert: ${alert.task.title}`,
             `${alert.timeLabel}. Tap to view.`
           );
         }
 
-        if (config.soundEnabled) {
+        if (cfg.soundEnabled) {
           playDueAlertSound();
         }
 
         // Email notification dispatch
-        const recipient = config.targetEmail || userEmail;
-        if (config.emailNotificationsEnabled && recipient) {
-          sendEmailDueNotification(alert.task, recipient, alert.timeLabel, userId).then((res) => {
+        const recipient = cfg.targetEmail || email;
+        if (cfg.emailNotificationsEnabled && recipient) {
+          sendEmailDueNotification(alert.task, recipient, alert.timeLabel, uid).then((res) => {
             if (res.success) {
               toast.info(`Email dispatched: ${alert.task.title}`, {
                 description: `Sent to ${recipient}`,
@@ -156,9 +201,9 @@ export function useDueTaskAlerts(tasks: Task[], userEmail?: string, userId?: str
     }
 
     if (hasNewAlert) {
-      sessionStorage.setItem(notifiedKey, JSON.stringify(notified));
+      localStorage.setItem(notifiedKey, JSON.stringify(notified));
     }
-  }, [dueAlerts, config.browserNotificationsEnabled, config.soundEnabled, config.emailNotificationsEnabled, config.targetEmail, userEmail, userId]);
+  }, [dueAlerts]); // ← ONLY dueAlerts; refs hold current config/email/userId
 
   // Snooze an alert for N hours
   const snoozeAlert = useCallback((taskId: string, hours: number = 1) => {
