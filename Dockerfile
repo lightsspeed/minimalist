@@ -28,16 +28,9 @@ ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine
-
-# Upgrade Alpine packages to patch known vulnerabilities
-RUN apk update && apk upgrade --no-cache
-
-# Clean up default files
-RUN rm -rf /usr/share/nginx/html/*
+FROM cgr.dev/chainguard/nginx:latest
 
 # Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 8080
