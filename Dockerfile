@@ -30,6 +30,9 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
+# Upgrade Alpine packages to patch known vulnerabilities
+RUN apk update && apk upgrade --no-cache
+
 # Clean up default files
 RUN rm -rf /usr/share/nginx/html/*
 
